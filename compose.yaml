@@ -1,0 +1,23 @@
+# Local services for Solace AI development.
+# Start with: podman compose up -d db   (or: docker compose up -d db)
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    container_name: solace-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: solace
+      POSTGRES_PASSWORD: solace
+      POSTGRES_DB: solace
+    ports:
+      - "5433:5432"
+    volumes:
+      - solace-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solace -d solace"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  solace-db-data:
