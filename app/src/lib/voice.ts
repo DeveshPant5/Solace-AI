@@ -1,0 +1,178 @@
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import * as Speech from 'expo-speech';
+import { useSyncExternalStore } from 'react';
+
+import { api, API_URL } from './api';
+import { storage } from './storage';
+
+/**
+ * Pip's voice. Lines are spoken with the natural ElevenLabs voice the backend
+ * proxies (and caches); if that isn't set up or fails, the phone's own
+ * text-to-speech voice is used instead, tuned to sound soft, warm and unhurried.
+ *
+ * Voice is opt-in: `enabled` starts as null ("not asked yet").
+ */
+
+const PREF_KEY = 'solace.voice';
+
+/** `line` is what's being said right now, so only the Pip saying it moves its mouth. */
+type State = { enabled: boolean | null; speaking: boolean; loaded: boolean; line: string | null };
+let state: State = { enabled: null, speaking: false, loaded: false, line: null };
+const listeners = new Set<() => void>();
+
+function set(patch: Partial<State>) {
+  state = { ...state, ...patch };
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function useVoice() {
+  return useSyncExternalStore(subscribe, () => state, () => state);
+}
+
+void storage.get(PREF_KEY).then((v) => set({ enabled: v === 'on' ? true : v === 'off' ? false : null, loaded: true }));
+
+export async function setVoiceEnabled(enabled: boolean) {
+  set({ enabled });
+  if (!enabled) stopSpeaking();
+  await storage.set(PREF_KEY, enabled ? 'on' : 'off');
+}
+
+let serverVoice: Promise<boolean> | null = null;
+function hasServerVoice() {
+  serverVoice ??= api<{ voice?: boolean }>('/health')
+    .then((h) => !!h.voice)
+    .catch(() => false);
+  return serverVoice;
+}
+
+let audioModeSet = false;
+async function ensureAudioMode() {
+  if (audioModeSet) return;
+  audioModeSet = true;
+  await setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'duckOthers' }).catch(() => undefined);
+}
+
+let deviceVoice: Promise<string | undefined> | null = null;
+function pickDeviceVoice() {
+  deviceVoice ??= Speech.getAvailableVoicesAsync()
+    .then((voices) => {
+      const english = voices.filter((v) => v.language?.toLowerCase().startsWith('en'));
+      const best = english.find((v) => String(v.quality) === 'Enhanced') ?? english[0];
+      return best?.identifier;
+    })
+    .catch(() => undefined);
+  return deviceVoice;
+}
+
+const lineUrl = (text: string) => `${API_URL}/voice/speak?text=${encodeURIComponent(text)}`;
+
+let player: AudioPlayer | null = null;
+let generation = 0;
+
+function releasePlayer() {
+  if (!player) return;
+  try {
+    player.pause();
+    player.remove();
+  } catch {
+    // Already released.
+  }
+  player = null;
+}
+
+export function stopSpeaking() {
+  generation++;
+  releasePlayer();
+  void Speech.stop();
+  if (state.speaking || state.line) set({ speaking: false, line: null });
+}
+
+function speakOnDevice(text: string, gen: number): Promise<void> {
+  return pickDeviceVoice().then(
+    (voice) =>
+      new Promise<void>((resolve) => {
+        if (gen !== generation) return resolve();
+        const done = () => {
+          if (gen === generation) set({ speaking: false, line: null });
+          resolve();
+        };
+        Speech.speak(text, {
+          voice,
+          pitch: 1.08,
+          rate: 0.9,
+          onStart: () => {
+            if (gen === generation) set({ speaking: true });
+          },
+          onDone: done,
+          onStopped: done,
+          onError: done,
+        });
+      }),
+  );
+}
+
+function speakWithServer(text: string, gen: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    let started = false;
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (gen === generation) {
+        releasePlayer();
+        set({ speaking: false, line: null });
+      }
+      resolve(ok);
+    };
+    const p = createAudioPlayer({ uri: lineUrl(text) });
+    player = p;
+    // If nothing has started in 6 seconds, fall back to the device voice.
+    const timeout = setTimeout(() => !started && finish(false), 6000);
+    p.addListener('playbackStatusUpdate', (s) => {
+      if (gen !== generation) return;
+      if (s.playing && !started) {
+        started = true;
+        set({ speaking: true });
+      }
+      if (s.didJustFinish) finish(true);
+    });
+    try {
+      p.play();
+    } catch {
+      finish(false);
+    }
+  });
+}
+
+/**
+ * Say one line as Pip. Resolves when the line ends or is interrupted.
+ * Does nothing unless the person turned voice on.
+ */
+export async function speak(text: string): Promise<void> {
+  if (!state.enabled || !text.trim()) return;
+  stopSpeaking();
+  const gen = generation;
+  set({ line: text });
+  await ensureAudioMode();
+  if (await hasServerVoice()) {
+    if (gen !== generation) return;
+    const ok = await speakWithServer(text, gen);
+    if (ok || gen !== generation) return;
+  }
+  if (gen !== generation) return;
+  await speakOnDevice(text, gen);
+}
+
+/** Warm the server's cache for a line that's coming up, so it starts instantly. */
+export function prefetchLine(text: string) {
+  if (!state.enabled || !text.trim()) return;
+  void hasServerVoice().then((ok) => {
+    if (ok) void fetch(lineUrl(text)).catch(() => undefined);
+  });
+}
