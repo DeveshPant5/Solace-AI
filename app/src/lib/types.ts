@@ -110,6 +110,30 @@ export interface ReminderItem {
   createdBy: 'user' | 'system' | 'sol';
 }
 
+export type TaskActivity = 'breathe_calm' | 'breathe_box' | 'breathe_478' | 'grounding' | 'journal' | 'checkin' | 'own';
+
+export interface TaskItem {
+  id: string;
+  activity: TaskActivity;
+  title: string;
+  hour: number;
+  minute: number;
+  /** Bit 0 is Sunday ... bit 6 is Saturday (127 = every day). */
+  days: number;
+  /** Timer length for the person's own tasks. */
+  minutes: number | null;
+  remind: boolean;
+  dueToday: boolean;
+  doneToday: boolean;
+  /** 'practice': done in the app today, so it can't be unticked. */
+  doneVia: 'tick' | 'practice' | null;
+}
+
+export interface TasksData {
+  today: { day: string; weekday: number };
+  tasks: TaskItem[];
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';

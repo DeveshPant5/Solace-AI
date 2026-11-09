@@ -25,6 +25,7 @@ export const TIPS = {
   checkin: { line: "Just notice how you feel right now. There's no wrong answer, and it only takes a moment.", mood: 'calm' },
   assessment: { line: 'A few gentle questions to notice patterns. It is not a test, and it is not a diagnosis.', mood: 'listening' },
   reminders: { line: 'Soft nudges, only when you want them. You can change or turn them off any time.', mood: 'happy' },
+  tasks: { line: 'Plan a few small things for your day. I’ll give you a gentle nudge at the time you pick.', mood: 'happy' },
   memory: { line: "This is what Sol remembers about you. You're in charge here, and can remove anything, any time.", mood: 'calm' },
 } satisfies Record<string, { line: string; mood: PipMood }>;
 

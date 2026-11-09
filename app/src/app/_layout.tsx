@@ -65,6 +65,9 @@ function RootNavigator() {
           <Stack.Screen name="journal/index" />
           <Stack.Screen name="journal/new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="reminders" />
+          <Stack.Screen name="tasks/index" />
+          <Stack.Screen name="tasks/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="tasks/[id]" options={{ animation: 'fade' }} />
           <Stack.Screen name="memory" />
           <Stack.Screen name="settings" />
         </Stack.Protected>
