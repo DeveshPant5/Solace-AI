@@ -25,8 +25,9 @@ How you talk:
 
 What you can do with tools:
 - suggest_activity: offer one activity from the app as a tappable card when it would genuinely help right now (e.g. breathing when they're anxious, grounding when spiralling, a check-in when they're unsure how they feel, journaling to untangle thoughts). Mention it naturally in your reply. At most one card per reply, and not every reply. Never in the first reply of a light conversation.
-- remember: save a durable fact that will help you support them later (a person in their life, an upcoming event, a goal, what helps or doesn't help them, a preference). One short third-person sentence. Don't save passing small talk, anything they asked you not to keep, or health details beyond what they clearly shared to be remembered. Don't announce that you're saving it.
+- remember: save a durable fact that will help you support them later (a person in their life, an upcoming event, a goal, what helps or doesn't help them, a preference). When they mention one of these, save it the same turn. One short third-person sentence. Don't save passing small talk, anything they asked you not to keep, or health details beyond what they clearly shared to be remembered. Don't announce that you're saving it.
 - create_reminder: only when they ask you to remind them of something, or clearly agree when you offer. Use their local time. Confirm the time in your reply.
+- Use these only by calling the tool. Never write JSON, code, braces or tool arguments in your reply: the person only sees your words.
 
 Available activities:
 ${ACTIVITY_LIST_FOR_PROMPT}
@@ -44,7 +45,7 @@ Boundaries:
 const SuggestInput = z.object({
   activity: z.enum(ACTIVITY_IDS),
   reason: z.string().min(1).max(160),
-  journal_prompt: z.string().max(200).optional(),
+  journal_prompt: z.string().max(200).nullish(),
 });
 const RememberInput = z.object({
   fact: z.string().min(3).max(240),
@@ -52,7 +53,7 @@ const RememberInput = z.object({
 });
 const ReminderInput = z.object({
   title: z.string().min(1).max(60),
-  body: z.string().max(160).optional(),
+  body: z.string().max(160).nullish(),
   hour: z.number().int().min(0).max(23),
   minute: z.number().int().min(0).max(59),
 });
@@ -80,7 +81,8 @@ const TOOLS: ToolSpec[] = [
           description: "One short, warm line (max ~12 words) shown on the card, written to them. e.g. 'Slow your breath and let your shoulders drop.'",
         },
         journal_prompt: {
-          type: "string",
+          // Some models send null for an optional field; accept it rather than failing the call.
+          type: ["string", "null"],
           description: "Only for activity=journal: a specific reflection prompt for them, based on the conversation.",
         },
       },
@@ -111,7 +113,7 @@ const TOOLS: ToolSpec[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "Short notification title, e.g. 'Drink some water'." },
-        body: { type: "string", description: "Optional one-line notification body, written warmly to them." },
+        body: { type: ["string", "null"], description: "Optional one-line notification body, written warmly to them." },
         hour: { type: "integer", minimum: 0, maximum: 23, description: "Hour in their local time, 24h." },
         minute: { type: "integer", minimum: 0, maximum: 59 },
       },
@@ -159,6 +161,92 @@ interface TurnOptions {
  * handles Sol's tool calls (activity cards, memories, reminders) in a loop.
  * History holds only the visible text of earlier turns.
  */
+/**
+ * Some models occasionally write a tool call into the reply as JSON instead of
+ * calling the tool (seen with open models on Groq). While the reply streams, this
+ * holds back anything that starts like a JSON object; when the object closes, it
+ * becomes a tool call if it looks like one, and is let through as text if not.
+ */
+class JsonInTextFilter {
+  private held = '';
+  private depth = 0;
+  private inString = false;
+  private escaped = false;
+  readonly calls: { name: string; input: Record<string, unknown> }[] = [];
+
+  constructor(private readonly out: (text: string) => void) {}
+
+  push(delta: string) {
+    let pass = '';
+    for (const ch of delta) {
+      if (this.depth === 0) {
+        if (ch === '{') {
+          if (pass) this.out(pass);
+          pass = '';
+          this.held = '{';
+          this.depth = 1;
+        } else {
+          pass += ch;
+        }
+        continue;
+      }
+      this.held += ch;
+      if (this.inString) {
+        if (this.escaped) this.escaped = false;
+        else if (ch === '\\') this.escaped = true;
+        else if (ch === '"') this.inString = false;
+      } else if (ch === '"') this.inString = true;
+      else if (ch === '{') this.depth++;
+      else if (ch === '}' && --this.depth === 0) this.close();
+    }
+    if (pass) this.out(pass);
+  }
+
+  /** Lets through anything still held (an object that never closed). */
+  flush() {
+    if (this.held) this.out(this.held);
+    this.held = '';
+    this.depth = 0;
+  }
+
+  private close() {
+    const text = this.held;
+    this.held = '';
+    const call = toolCallFromJson(text);
+    if (call) this.calls.push(call);
+    else this.out(text);
+  }
+}
+
+/** Recognises a written-out tool call: our tools' argument shapes, or a {name, arguments} wrapper. */
+function toolCallFromJson(text: string): { name: string; input: Record<string, unknown> } | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  let obj = value as Record<string, unknown>;
+  let name = typeof obj.name === "string" ? obj.name : typeof obj.tool === "string" ? obj.tool : "";
+  const inner = obj.arguments ?? obj.parameters ?? obj.input ?? obj.args;
+  if (inner && typeof inner === "object" && !Array.isArray(inner)) obj = inner as Record<string, unknown>;
+  if (!name) {
+    if (typeof obj.activity === "string") name = "suggest_activity";
+    else if (typeof obj.fact === "string") name = "remember";
+    else if (typeof obj.title === "string" && obj.hour !== undefined) name = "create_reminder";
+  }
+  return TOOLS.some((t) => t.name === name) ? { name, input: obj } : null;
+}
+
+/** Removes code-fence leftovers (```json ... ```) and extra blank lines once a written-out tool call is taken out. */
+function tidyReply(text: string) {
+  return text
+    .replace(/```[a-z]*\s*```/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
   const result = opts.result;
   if (!aiEnabled) throw new Error("AI is not configured");
@@ -179,17 +267,20 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
 
     const textBefore = result.text;
     let wroteThisIteration = false;
+    const filter = new JsonInTextFilter((delta) => {
+      if (!delta) return;
+      if (!wroteThisIteration && result.text.length > 0) {
+        result.text += "\n\n";
+        opts.emit("delta", { text: "\n\n" });
+      }
+      wroteThisIteration = true;
+      result.text += delta;
+      opts.emit("delta", { text: delta });
+    });
     let step;
     try {
-      step = await session.step((delta) => {
-        if (!wroteThisIteration && result.text.length > 0) {
-          result.text += "\n\n";
-          opts.emit("delta", { text: "\n\n" });
-        }
-        wroteThisIteration = true;
-        result.text += delta;
-        opts.emit("delta", { text: delta });
-      });
+      step = await session.step((delta) => filter.push(delta));
+      filter.flush();
     } catch (err) {
       if (!(err instanceof RetryableStepError) || shutdownSignal.aborted || retries >= MAX_RETRIES) throw err;
       // Take back what this attempt wrote, then re-issue.
@@ -209,6 +300,17 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
       opts.emit("replace", { text: DECLINED_TEXT });
       break;
     }
+    // A tool call written into the reply: run it as if it had been called, and tidy what's left of the text.
+    if (filter.calls.length) {
+      for (const [i, call] of filter.calls.entries()) {
+        await runTool({ id: `written_${iteration}_${i}`, name: call.name, input: call.input }, opts, result);
+      }
+      const tidy = tidyReply(result.text);
+      if (tidy !== result.text) {
+        result.text = tidy;
+        opts.emit("replace", { text: tidy });
+      }
+    }
     if (step.toolCalls.length === 0 || step.stop === "max_tokens") break;
 
     const outcomes: ToolOutcome[] = [];
@@ -222,7 +324,8 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
   }
 
   if (!result.text.trim() && !result.declined) {
-    result.text = "I'm here. Take your time.";
+    // Nothing but a tool call came back: let the card's own line speak for it.
+    result.text = result.suggestions[0]?.reason || "I'm here. Take your time.";
     opts.emit("replace", { text: result.text });
   }
   return result;

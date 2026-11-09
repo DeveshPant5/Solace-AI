@@ -90,6 +90,15 @@ const mock = http.createServer((req, res) => {
       // Writes the reply first, then calls the tool.
       return stream(res, [chunk({ role: "assistant", content: "Of course, " }), chunk({ content: "9:30 it is." }), ...toolCall("create_reminder", { title: "Stretch", hour: 9, minute: 30 }), done("tool_calls")]);
     }
+    if (said.includes("write json please")) {
+      // The model writes its tool call into the reply as JSON (split across chunks), plus a brace in normal text.
+      return stream(res, [
+        chunk({ role: "assistant", content: "Want to try a calm breath together? I like {curly} things.\n\n```json\n{\n  \"activ" }),
+        chunk({ content: "ity\": \"breathing_calm\",\n  \"reason\": \"Ease tension\"\n}" }),
+        chunk({ content: "\n```" }),
+        done("stop"),
+      ]);
+    }
     if (said.includes("save this")) {
       // Calls the tool before writing anything, so a second round is needed for the reply.
       if (!hasToolResult) return stream(res, [...toolCall("remember", { fact: "Has a sister called Mira.", category: "people" }), done("tool_calls")]);
@@ -219,6 +228,17 @@ describe("chat with Sol (Groq)", () => {
     assert.ok(assistant && tool);
     assert.equal(tool.tool_call_id, assistant.tool_calls[0].id);
     assert.equal(tool.content, "Saved.");
+  });
+
+  test("a tool call written into the reply becomes a card, and the reply shows only words", async () => {
+    const { json } = await api("/conversations", "POST");
+    const events = await chat(json.conversation.id, "write json please");
+    const done = events.find((e) => e.event === "done")!;
+    assert.equal(done.data.message.content, "Want to try a calm breath together? I like {curly} things.");
+    assert.equal(done.data.message.meta.suggestions[0].activity, "breathing_calm");
+    assert.equal(done.data.message.meta.suggestions[0].reason, "Ease tension");
+    const streamed = events.filter((e) => e.event === "delta").map((e) => e.data.text).join("");
+    assert.doesNotMatch(streamed, /"activity"/, "the JSON is never shown, even while streaming");
   });
 
   test("a used-up daily allowance gets a calm 'resting' message", async () => {

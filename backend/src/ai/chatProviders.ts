@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "groq-sdk/resources/chat/completions";
 import { aiProvider, config } from "../config.js";
 import { recordAiOutput } from "../lib/budget.js";
@@ -140,6 +141,19 @@ function isToolJsonError(err: unknown): boolean {
 
 // ---------- Groq (OpenAI-style chat completions) ----------
 
+interface GroqRun {
+  text: string;
+  finish: string | null;
+  calls: { id: string; name: string; args: string }[];
+}
+
+/** Groq rejects a tool call whose arguments don't match the tool's schema with a 400 "tool_use_failed". */
+function isToolUseFailed(err: unknown): boolean {
+  if (!(err instanceof Groq.BadRequestError)) return false;
+  const code = (err.error as { error?: { code?: string } } | undefined)?.error?.code;
+  return code === "tool_use_failed" || /tool call validation failed|tool_use_failed|failed to call a function/i.test(err.message);
+}
+
 class GroqSession implements ChatSession {
   private messages: ChatCompletionMessageParam[];
   private tools: ChatCompletionTool[];
@@ -154,6 +168,41 @@ class GroqSession implements ChatSession {
   }
 
   async step(onText: (delta: string) => void): Promise<StepResult> {
+    let wrote = false;
+    const write = (delta: string) => {
+      wrote = true;
+      onText(delta);
+    };
+    let run: GroqRun;
+    try {
+      run = await this.run(write, "auto");
+    } catch (err) {
+      // The model produced a tool call Groq couldn't validate. If nothing reached the
+      // person yet, ask again for a plain reply (a written-out suggestion is still caught).
+      if (!isToolUseFailed(err) || wrote) throw err;
+      console.warn("[ai:companion] tool call rejected by Groq; asking for a plain reply");
+      run = await this.run(write, "none");
+    }
+    // Occasionally the model returns nothing at all: give it one more try.
+    if (!run.text && run.calls.length === 0 && !wrote) run = await this.run(write, "auto");
+
+    const toolCalls: ToolCall[] = run.calls.map((c) => {
+      try {
+        return { id: c.id, name: c.name, input: JSON.parse(c.args) as unknown };
+      } catch {
+        return { id: c.id, name: c.name, input: null, inputError: "The arguments were not valid JSON." };
+      }
+    });
+    this.lastAssistant = {
+      role: "assistant",
+      content: run.text || null,
+      ...(run.calls.length ? { tool_calls: run.calls.map((c) => ({ id: c.id, type: "function" as const, function: { name: c.name, arguments: c.args } })) } : {}),
+    };
+    return { toolCalls, stop: run.finish === "length" ? "max_tokens" : toolCalls.length ? "tool_use" : "end" };
+  }
+
+  /** One streamed request. */
+  private async run(onText: (delta: string) => void, toolChoice: "auto" | "none"): Promise<GroqRun> {
     // Retrying or switching models here is safe: a failed request fails before any reply text has streamed.
     const stream = await withGroqModels([config.groqChatModel, ...config.groqChatFallbacks], (model) =>
       groq!.chat.completions.create(
@@ -161,7 +210,7 @@ class GroqSession implements ChatSession {
           model,
           messages: this.messages,
           tools: this.tools,
-          tool_choice: "auto",
+          tool_choice: toolChoice,
           stream: true,
           // A few sentences plus a little reasoning; kept modest because the free tier counts tokens per minute.
           max_completion_tokens: 2048,
@@ -191,21 +240,11 @@ class GroqSession implements ChatSession {
       if (choice?.finish_reason) finish = choice.finish_reason;
       if (chunk.x_groq?.usage) recordAiOutput(chunk.x_groq.usage.completion_tokens);
     }
-
-    const raw = [...calls.entries()].map(([index, c]) => ({ ...c, id: c.id || `call_${index}`, args: c.args || "{}" }));
-    const toolCalls: ToolCall[] = raw.map((c) => {
-      try {
-        return { id: c.id, name: c.name, input: JSON.parse(c.args) as unknown };
-      } catch {
-        return { id: c.id, name: c.name, input: null, inputError: "The arguments were not valid JSON." };
-      }
-    });
-    this.lastAssistant = {
-      role: "assistant",
-      content: text || null,
-      ...(raw.length ? { tool_calls: raw.map((c) => ({ id: c.id, type: "function" as const, function: { name: c.name, arguments: c.args } })) } : {}),
+    return {
+      text,
+      finish,
+      calls: [...calls.entries()].map(([index, c]) => ({ ...c, id: c.id || `call_${index}`, args: c.args || "{}" })),
     };
-    return { toolCalls, stop: finish === "length" ? "max_tokens" : toolCalls.length ? "tool_use" : "end" };
   }
 
   addToolResults(results: ToolOutcome[]) {
