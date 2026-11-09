@@ -40,7 +40,9 @@ export function createApp() {
   app.get("/health", async (_req, res) => {
     const db = await databaseReachable();
     // voice is false while Pip's natural voice is paused (e.g. free ElevenLabs credits used up): the app then uses the phone's voice.
-    res.status(db ? 200 : 503).json({ ok: db, db: db ? "up" : "down", ai: aiEnabled, voice: voiceAvailable() });
+    // commit: which version is deployed (Render sets RENDER_GIT_COMMIT), for checking a deploy went out.
+    const commit = process.env.RENDER_GIT_COMMIT?.slice(0, 7);
+    res.status(db ? 200 : 503).json({ ok: db, db: db ? "up" : "down", ai: aiEnabled, voice: voiceAvailable(), ...(commit ? { commit } : {}) });
   });
 
   // For checking TRUST_PROXY after deploying: open it from your phone and compare with your public IP.
