@@ -55,9 +55,13 @@ const mock = http.createServer((req, res) => {
   req.on("end", () => {
     const body = JSON.parse(raw) as Json;
     requests.push(body);
-    const everything = JSON.stringify(body.messages);
-    if (everything.includes("daily limit please")) return rateLimited(res, "3600", "0");
-    if (everything.includes("busy minute please")) return rateLimited(res, "1", "500");
+    // Triggers look only at the newest user message (earlier notes can reappear in the person's context).
+    const users = (body.messages as Json[]).filter((m) => m.role === "user");
+    const newest = String(users[users.length - 1]?.content ?? "");
+    if (newest.includes("daily limit please")) return rateLimited(res, "3600", "0");
+    if (newest.includes("busy minute please")) return rateLimited(res, "1", "500");
+    // Only the main chat model is out of free allowance: the next model should take over.
+    if (newest.includes("fallback please") && body.model === "openai/gpt-oss-120b") return rateLimited(res, "3600", "0");
 
     if (!body.stream) {
       const system = String(body.messages[0]?.content ?? "");
@@ -233,5 +237,32 @@ describe("chat with Sol (Groq)", () => {
     const r = await api("/moods", "POST", { mood: 2, note: "daily limit please" });
     assert.equal(r.status, 201);
     assert.match(r.json.reply.message, /heavy one/);
+  });
+
+  test("when the main model's free allowance is used up, the next model answers", async () => {
+    const { json } = await api("/conversations", "POST");
+    const events = await chat(json.conversation.id, "fallback please");
+    assert.equal(events.find((e) => e.event === "done")?.data.message.content, "Hi there. How are you feeling today?");
+    const models = chatRequests().map((r) => r.model);
+    assert.deepEqual(models, ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]);
+    const qwen = chatRequests()[1]!;
+    assert.equal(qwen.reasoning_effort, "none", "Qwen answers without a reasoning step");
+    assert.equal("include_reasoning" in qwen, false);
+  });
+
+  test("a message about dying gets help even when every model is out of allowance", async () => {
+    const { json } = await api("/conversations", "POST");
+    const events = await chat(json.conversation.id, "daily limit please. honestly I want to die");
+    // The card shows straight away, from the keyword check.
+    const firstSignal = events.find((e) => e.event === "signal");
+    assert.equal(firstSignal?.data.risk, "crisis");
+    assert.equal(events.some((e) => e.event === "error"), false);
+    const done = events.find((e) => e.event === "done")!;
+    assert.match(done.data.message.content, /help lines below/);
+    assert.equal(done.data.message.meta.safety, "crisis");
+    assert.equal(done.data.message.meta.suggestions[0].activity, "help_now");
+    const saved = await api(`/conversations/${json.conversation.id}`);
+    assert.equal(saved.json.messages[0].meta.signal.risk, "crisis");
+    assert.equal(saved.json.messages[1].role, "assistant");
   });
 });

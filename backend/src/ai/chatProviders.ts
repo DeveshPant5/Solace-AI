@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "groq-sdk/resources/chat/completions";
 import { aiProvider, config } from "../config.js";
 import { recordAiOutput } from "../lib/budget.js";
-import { anthropic, groq, groqReasoning, MODEL, withGroqRetry } from "./client.js";
+import { anthropic, groq, groqReasoning, MODEL, withGroqModels } from "./client.js";
 
 // One model request at a time, for Sol's tool loop (ai/companion.ts), behind the
 // same small interface for each AI service.
@@ -59,7 +59,7 @@ export interface SessionOptions {
  */
 export const chatProfile =
   aiProvider === "groq"
-    ? { historyMessages: 16, historyChars: 7_000, contextMemories: 15, followUpAfterTools: false }
+    ? { historyMessages: 12, historyChars: 5_000, contextMemories: 12, followUpAfterTools: false }
     : { historyMessages: 40, historyChars: 24_000, contextMemories: 40, followUpAfterTools: true };
 
 export function createChatSession(opts: SessionOptions): ChatSession {
@@ -154,9 +154,8 @@ class GroqSession implements ChatSession {
   }
 
   async step(onText: (delta: string) => void): Promise<StepResult> {
-    const model = config.groqChatModel;
-    // Retrying here is safe: the request fails before any reply text has streamed.
-    const stream = await withGroqRetry(() =>
+    // Retrying or switching models here is safe: a failed request fails before any reply text has streamed.
+    const stream = await withGroqModels([config.groqChatModel, ...config.groqChatFallbacks], (model) =>
       groq!.chat.completions.create(
         {
           model,

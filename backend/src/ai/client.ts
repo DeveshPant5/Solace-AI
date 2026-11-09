@@ -32,6 +32,29 @@ export async function withGroqRetry<T>(request: () => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * Runs a Groq request on the first model that has free allowance left: when a
+ * model is rate limited (each model has its own limits), the next one is tried.
+ * Throws the last error if every model fails.
+ */
+export async function withGroqModels<T>(candidates: string[], request: (model: string) => Promise<T>): Promise<T> {
+  const models = [...new Set(candidates)];
+  let lastError: unknown;
+  for (const [i, model] of models.entries()) {
+    try {
+      return await withGroqRetry(() => request(model));
+    } catch (err) {
+      lastError = err;
+      const rateLimited = err instanceof Groq.RateLimitError;
+      // Groq retires models from time to time; skip one it no longer serves (and say so, so the setting gets updated).
+      const gone = err instanceof Groq.NotFoundError;
+      if ((!rateLimited && !gone) || i === models.length - 1) throw err;
+      console.warn(`[ai] ${model} ${gone ? "isn't available on Groq any more (update GROQ_*_MODEL settings)" : "is rate limited"}; trying ${models[i + 1]}`);
+    }
+  }
+  throw lastError;
+}
+
 function retryWaitMs(err: unknown): number | null {
   if (err instanceof Groq.APIUserAbortError) return null;
   if (err instanceof Groq.RateLimitError) {
@@ -91,11 +114,10 @@ async function structuredAnthropic<T extends z.ZodType>(schema: T, system: strin
 }
 
 async function structuredGroq<T extends z.ZodType>(schema: T, system: string, prompt: string, label: string) {
-  const model = config.groqFastModel;
   const jsonSchema = strictJsonSchema(schema);
-  const strict = supportsStrictJson(model);
-  const response = await withGroqRetry(() =>
-    groq!.chat.completions.create(
+  const response = await withGroqModels([config.groqFastModel, ...config.groqFastFallbacks], (model) => {
+    const strict = supportsStrictJson(model);
+    return groq!.chat.completions.create(
       {
         model,
         messages: [
@@ -112,8 +134,8 @@ async function structuredGroq<T extends z.ZodType>(schema: T, system: string, pr
         ...groqReasoning(model),
       },
       { timeout: STRUCTURED_TIMEOUT_MS },
-    ),
-  );
+    );
+  });
   recordAiOutput(response.usage?.completion_tokens);
   const choice = response.choices[0];
   if (choice?.finish_reason === "length") console.warn(`[ai:${label}] hit max_completion_tokens`);

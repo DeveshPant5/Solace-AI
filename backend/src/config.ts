@@ -23,6 +23,10 @@ function parse<T extends z.ZodType>(name: string, schema: T, fallback: z.input<T
 }
 
 const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._\/:-]{2,100}$/;
+const modelList = z
+  .string()
+  .transform((v) => v.split(",").map((m) => m.trim()).filter(Boolean))
+  .pipe(z.array(z.string().regex(MODEL_ID, "expected Groq model ids, comma-separated")));
 const int = (min: number, max: number) => z.coerce.number().int().min(min).max(max);
 const flag = z.enum(["0", "1", "true", "false"]).transform((v) => v === "1" || v === "true");
 
@@ -85,6 +89,12 @@ export const config = {
   groqChatModel: parse("GROQ_CHAT_MODEL", z.string().regex(MODEL_ID, "expected a Groq model id"), "openai/gpt-oss-120b"),
   /** Short structured jobs (mood signal, titles, daily card, Pip's help). Free limits are per model, so this spreads the load. */
   groqFastModel: parse("GROQ_FAST_MODEL", z.string().regex(MODEL_ID, "expected a Groq model id"), "openai/gpt-oss-20b"),
+  /**
+   * Tried in order when a model hits its free limit (each model has its own allowance),
+   * so Sol keeps talking when one is used up. Comma-separated; empty for none.
+   */
+  groqChatFallbacks: parse("GROQ_CHAT_FALLBACK_MODELS", modelList, "qwen/qwen3.8-27b,openai/gpt-oss-20b"),
+  groqFastFallbacks: parse("GROQ_FAST_FALLBACK_MODELS", modelList, "qwen/qwen3.8-27b"),
 
   // ---------- Claude ----------
   anthropicApiKey: read("ANTHROPIC_API_KEY"),
