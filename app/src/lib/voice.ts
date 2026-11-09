@@ -164,6 +164,9 @@ export async function speak(text: string): Promise<void> {
     if (gen !== generation) return;
     const ok = await speakWithServer(text, gen);
     if (ok || gen !== generation) return;
+    // The natural voice failed (for example, the free ElevenLabs credits ran out): ask the server again
+    // before the next line, so Pip moves to the phone's voice instead of waiting on it each time.
+    serverVoice = null;
   }
   if (gen !== generation) return;
   await speakOnDevice(text, gen);
