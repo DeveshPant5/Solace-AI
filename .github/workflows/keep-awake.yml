@@ -7,7 +7,9 @@ name: Keep the API awake
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    # Off the round minutes: GitHub is busiest at the top of the hour and drops
+    # scheduled runs under load. A free external pinger is the reliable backup.
+    - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch:
 
 jobs:
