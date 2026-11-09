@@ -45,3 +45,21 @@ export const FALLBACK_AFFIRMATIONS = [
 
 /** Mood scale used everywhere: 1 = very low, 5 = great. */
 export const MOOD_LABELS = ["", "Very low", "Low", "Okay", "Good", "Great"] as const;
+
+/** Focus areas a person can pick in onboarding and settings (the app shows the same list). */
+export const FOCUS_IDS = [
+  "stress",
+  "anxiety",
+  "low mood",
+  "sleep",
+  "self-esteem",
+  "loneliness",
+  "focus",
+  "relationships",
+  "habits",
+] as const;
+export type FocusId = (typeof FOCUS_IDS)[number];
+export const isFocusId = (value: string): value is FocusId => (FOCUS_IDS as readonly string[]).includes(value);
+
+/** Guides in the app; each step earns XP once. */
+export const GUIDE_IDS = ["anxiety", "low_mood", "sleep", "self_esteem", "stress", "mindfulness"] as const;
