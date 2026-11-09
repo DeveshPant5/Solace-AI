@@ -1,6 +1,6 @@
 # Solace AI: project handoff
 
-Everything a new session needs to pick up this project. Last updated **2026-11-05** (round 2: warm light UI, voice, AI onboarding; round 3: Pip replaces Ray, screen tips, calm-by-design). Read this first, then `README.md` for setup and feature details.
+Everything a new session needs to pick up this project. Last updated **2026-11-09** (round 2: warm light UI, voice, AI onboarding; round 3: Pip replaces Ray, screen tips, calm-by-design; round 4: security audit and backend hardening, see section 6 "Security"; round 5: Sol moved to Groq's free open models and the backend made deployable on Render). Read this first, then `README.md` for setup and feature details.
 
 ---
 
@@ -61,8 +61,20 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - the browser's own voice speaking (fallback path) and the mic button rendering in Chrome
 - **Release APK** built: `builds/Solace.apk` (41 MB, arm64-v8a, package `com.solace.companion`). It is hard-wired to `http://192.168.29.213:4000`, the user's Wi-Fi IP on 2026-11-05.
 
+- **Round 4 (2026-11-09), security hardening:**
+  - a multi-agent audit found 68 issues; each was checked against the code and fixed or consciously accepted (section 6, "Security")
+  - `npm test` in `backend/`: 32 tests (accounts, isolation, limits, privacy, error mapping, and chat end to end against a local stand-in for the Messages API: streaming, a tool call, a declined crisis message, a reply that breaks off)
+  - checked by hand: spoofed `X-Forwarded-For` no longer resets limits, production mode blocks browser origins, a weak `JWT_SECRET` or a typo in `CHAT_EFFORT` stops startup, SIGTERM during a streaming reply exits in 0.2 s and saves the half-written reply
+  - web preview still works with the hardened API (Home, Journey, You), and a token issued before round 4 is still accepted
+
+- **Round 5 (2026-11-09), Groq and deployment:**
+  - the AI layer now runs on Groq by default (`openai/gpt-oss-120b` for chat, `openai/gpt-oss-20b` for JSON jobs); Claude stays available with `AI_PROVIDER=anthropic`
+  - `npm test`: 38 tests, including 6 for Groq against a local stand-in for its API (streaming, strict JSON on the fast model, tool calls with and without a written reply, daily-limit and busy-minute messages, check-in fallback when rate limited)
+  - production build checked: `npm run build` then `npm start` serves from `dist/` with migrations applied
+  - `render.yaml` (Render Blueprint) and `.github/workflows/keep-awake.yml` added; not deployed yet (needs the user's Render account, Groq key and a push to GitHub)
+
 ### Not yet tested
-- **Everything that calls Claude**, because no `ANTHROPIC_API_KEY` existed on the machine:
+- **Everything that calls a real AI service** (no Groq or Anthropic key on the machine yet; only local stand-ins were used):
   - streaming chat and its three tools
   - the per-message mood/safety signal
   - conversation titles
@@ -78,7 +90,8 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
 - **All of round 2.** It adds native modules (`expo-audio`, `expo-speech`, `expo-speech-recognition`, plus the Fraunces font) and the RECORD_AUDIO permission, so the old APK can't run it.
 - `app.json`: `android.blockedPermissions` drops `SYSTEM_ALERT_WINDOW`, storage and biometric permissions.
 - White `thumbColor` on the switches in Memory and Reminders.
-- Backend-only changes don't need a rebuild: the offline weekly reflection, the `.catch("none")` on AI activity fields, and the demo seed.
+- Backend-only changes don't need a rebuild: the offline weekly reflection, the `.catch("none")` on AI activity fields, the demo seed, and all of round 4's backend work.
+- Round 4 app changes (need a rebuild): `app/app.config.js` turns cleartext HTTP off when the APK is built with an `https://` API_URL; sign-out calls `POST /auth/logout`; the You tab's privacy card says replies go through Claude (Anthropic) and Pip's voice through ElevenLabs. Older APKs keep working with the new backend.
 
 ## 3. Next steps (in order)
 
@@ -88,15 +101,23 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
    - open the welcome screen, choose "Yes, talk me through it" and listen to Pip
    - if ElevenLabs answers 402, or the voice doesn't feel calm enough, set `PIP_VOICE_ID` to another voice from the ElevenLabs library (pick a soft, warm one)
    - generated clips are cached in `backend/.cache/voice/`; delete them after changing the voice
-1. The user adds `ANTHROPIC_API_KEY=…` to `backend/.env` and restarts the backend (`tsx watch` doesn't reload on `.env` changes). Then test chat properly:
+1. The user creates a free Groq key at https://console.groq.com/keys and puts it in `backend/.env` as `GROQ_API_KEY=…` (the line exists, empty), then restarts the backend (`tsx watch` doesn't reload on `.env` changes). `/health` should show `"ai":true`. Then test chat properly:
    - venting, anxiety, asking for a reminder, mentioning a person or event (should be remembered)
    - a crisis phrase (should show the safety card)
    - a check-in, an assessment, the Home daily card, the Journey reflection
-   - fix whatever the real API returns, such as model or parameter errors
-2. Rebuild the APK and test on an Android phone on the same Wi-Fi:
-   - Fedora's firewall blocks port 4000; the user runs `sudo firewall-cmd --add-port=4000/tcp` (Claude must not change system settings)
+   - judge the tone of `openai/gpt-oss-120b`; if it feels less warm, try `GROQ_CHAT_MODEL=llama-3.3-70b-versatile` (smaller free daily allowance: about 100,000 tokens) and compare
+2. Deploy (the APK must work on any phone, so the backend needs a public HTTPS address). The user asked for this on 2026-11-09:
+   - commit and push (only when the user says so); Render deploys from GitHub
+   - Render → New → Blueprint → this repo → paste `GROQ_API_KEY` (and optionally `ELEVENLABS_API_KEY`); `render.yaml` creates the API (`solace-api`, Singapore, free) and a free Postgres
+   - check `https://<service>.onrender.com/health` and `/health/ip` (compare `ip` with the phone's public IP; adjust `TRUST_PROXY` until it matches)
+   - optional: GitHub repo variable `BACKEND_URL` turns on the keep-awake ping (free instances sleep after 15 idle minutes)
+   - Render's free Postgres expires after 30 days; for longer, use Neon and set `DATABASE_URL`
+   - to seed the demo account there: `ALLOW_DEMO_SEED=1 SEED_DEMO_PASSWORD=<private> DATABASE_URL=<external url> npm run seed:demo` (the public local password is refused)
+3. Build the APK against the deployed API and test on a phone (any network, no firewall change needed):
+   - `cd app && API_URL=https://<service>.onrender.com npm run build:apk` → `builds/Solace.apk`; an `https://` URL also turns cleartext HTTP off in the APK
    - test notifications with Reminders → "Send a test notification", the daily ones, and tapping each one
-3. Optional but better for judges: deploy the backend (Render/Railway + Neon/Supabase Postgres), then rebuild the APK with `API_URL=https://…` so it works anywhere.
+   - for LAN testing against the laptop instead: `API_URL=http://<wifi-ip>:4000`, and the user runs `sudo firewall-cmd --add-port=4000/tcp` (Claude must not change system settings)
+   - optional: recreate the local database container bound to localhost only (`podman rm -f solace-db && npm run db:up`; the data volume is kept). The running container still listens on all interfaces because it was created before round 4.
 4. Demo video. `npm run seed:demo` fills the demo account with two weeks of history. Suggested order:
    - splash → onboarding → sign-up → home check-in
    - chat with Sol (activity card, memory, reminder) → breathing → a check-in with next steps
@@ -111,7 +132,11 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
 
 ## 4. Decisions already made (don't re-ask)
 
-- **AI provider:** Claude, via the Anthropic API (user's choice).
+- **AI provider (changed 2026-11-09, user's choice): Groq's free tier**, open models via the official `groq-sdk`. The user first asked for "Grok" believing it was free and open source; it's paid (xAI API, about $2/$6 per million tokens) and only an old Grok-1 is open. Given the cost goal they chose Groq (with a q).
+  - Chat: `openai/gpt-oss-120b` (`GROQ_CHAT_MODEL`), JSON jobs: `openai/gpt-oss-20b` (`GROQ_FAST_MODEL`, strict JSON Schema output). Free limits are per model (about 8K tokens a minute, 200K a day each), so splitting the work doubles the allowance.
+  - Claude remains supported (`AI_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`); the notes below about Claude apply when it's selected.
+  - If the provider changes, update the privacy sentence on the You tab (`app/src/app/(tabs)/you.tsx`), which names Groq.
+- **Earlier AI provider:** Claude, via the Anthropic API (the user's original choice).
   - Default model: `claude-opus-5-5`, set by `CLAUDE_MODEL` in `backend/.env`. The question shown to the user had mentioned Sonnet 5.5, but the claude-api skill says to default to Opus 5.5; the user was told and can switch to `claude-sonnet-5-5`.
   - Chat effort `low` (`CHAT_EFFORT`).
 - **Database:** PostgreSQL (user's choice), in a local podman container.
@@ -167,8 +192,9 @@ npx expo start --web --port 8081                      # web preview
 API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
 ```
 
-- **`backend/.env`** exists, with a generated `JWT_SECRET` and an empty `ANTHROPIC_API_KEY`. It's gitignored; never print it.
-- **Local test account:** `demo@solace.test` / `solace-demo-2026`. It only exists in the local database; the seed script recreates its data.
+- **`backend/.env`** exists, with a generated `JWT_SECRET` and empty `GROQ_API_KEY`, `ANTHROPIC_API_KEY` and `ELEVENLABS_API_KEY`. It's gitignored and `chmod 600`; never print it.
+- **Local test account:** `demo@solace.test` / `solace-demo-2026`. It only exists in the local database; the seed script recreates its data (and refuses to run against a non-local database without `ALLOW_DEMO_SEED=1` and a private `SEED_DEMO_PASSWORD`).
+- **Tests:** `cd backend && npm test` (needs the local database running).
 - **API base URL in the app** (`src/lib/api.ts`): it uses `EXPO_PUBLIC_API_URL` if set. Otherwise web uses `http://<page host>:4000` and native uses the Expo dev server's host on port 4000.
 - **Expo Go:** an SDK 58 build may not be in the stores yet, so use the APK or a dev build on a phone.
 
@@ -180,31 +206,40 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
 |---|---|
 | `src/index.ts` | Runs migrations, then listens on `PORT` |
 | `src/app.ts` | Routes; everything except `/auth` and `/health` sits behind `requireAuth` |
-| `src/config.ts` | Env vars; `aiEnabled = !!ANTHROPIC_API_KEY` |
+| `src/config.ts` | Env vars, validated at startup; `aiProvider` ("groq" / "anthropic" / null) from `AI_PROVIDER` and the keys; `aiEnabled` |
 | `src/db.ts` | Pool. DATE columns come back as `YYYY-MM-DD` strings; int8 and numeric as numbers |
 | `src/migrate.ts`, `migrations/001_init.sql` | Tables: users, mood_entries, assessments, conversations, messages, memories, activities (all XP), journal_entries, reminders, daily_cache |
-| `src/auth.ts` | JWT (30 days), `requireAuth`, `currentUser(req)`, `safeTimezone` |
+| `src/auth.ts` | JWT (30 days, HS256, carries the account's `token_version`), `requireAuth`, `currentUser(req)`, `safeTimezone` (async: a zone both Node and Postgres accept) |
 | `src/routes/*` | auth, me (GET/PATCH/DELETE account), home (+`/home/daily`), moods, assessments (+`/catalog`), conversations (SSE), progress (+`/reflection`), misc.ts (activities, journal, memories, reminders) |
 | `src/lib/progress.ts` | XP values, levels, streaks computed in the user's time zone |
 | `src/content/assessments.ts` | Question sets, scoring bands, offline "moves" |
 | `src/content/catalog.ts` | Activity IDs the AI may suggest, plus offline affirmations |
-| `src/ai/client.ts` | Anthropic client; `structured()` helper (`messages.parse` + `zodOutputFormat`, effort low; returns null on a refusal or error) |
+| `src/ai/client.ts` | The Groq or Anthropic client; `structured()` (Groq: strict `json_schema` from the zod schema on the fast model, validated with zod; Claude: `messages.parse` + `zodOutputFormat`); returns null on a refusal or error. `withGroqRetry`, `aiErrorKind` ("busy" / "daily_limit"), `logAiError` |
+| `src/ai/chatProviders.ts` | One chat session per service behind `step()` / `addToolResults()`: Claude (beta messages stream, fallbacks, persona cached) and Groq (streaming chat completions, OpenAI-style tool calls). `chatProfile` sizes history and memories per service. |
 | `src/ai/context.ts` | `buildUserContext(user)` builds a text block: name, local time, tone, focus areas, progress, last 6 moods, latest results, and, if memory is on, memories, 2 journal entries and recent chat titles |
 | `src/ai/companion.ts` | Sol's persona, 3 tools, and the streaming loop |
 | `src/ai/analysis.ts` | Per-message signal (mood/emotions/risk), title, daily card, assessment moves, check-in reply, weekly reflection |
 | `src/seed-demo.ts` | Demo data |
 | `src/routes/onboarding.ts`, `src/ai/onboarding.ts` | Public `POST /onboarding/assist`: Pip's rephrasings (persona: soft, unhurried, calming), focus picks and tone previews. Structured output, offline fallback, concern detection (AI flag OR keywords), and output clean-up for speech (no emoji or dashes, word caps). Stateless; logs no text. |
 | `src/routes/voice.ts` | Public `GET /voice/speak?text=` (1–300 chars). Proxies ElevenLabs streaming TTS and writes a disk cache at `backend/.cache/voice/<sha256>.mp3` (gitignored). Supports Range requests for Safari; returns 503 `voice_off` without a key and 502 `voice_failed` on upstream errors. |
-| `src/lib/rateLimit.ts` | In-memory per-IP limiter: assist 30, voice 80 per 10 minutes. With `trust proxy 1` and no proxy in front, a client can spoof `X-Forwarded-For` to get around it. |
+| `src/lib/rateLimit.ts` | In-memory `RateLimiter` plus `rateLimit()` (per IP) and `userRateLimit()` (per account) middleware; bounded key maps. The IP comes from `req.ip`, which only trusts `X-Forwarded-For` when `TRUST_PROXY` is set. |
+| `src/lib/budget.ts` | Daily counters for AI requests and output tokens (overall, public helper, per account) and ElevenLabs characters. Past a limit, AI calls return null (offline content) and voice answers 503 (phone voice). |
+| `src/lib/text.ts` | `oneLine`, `cleanMultiline`, `lineField`/`textField` zod helpers, `stripTags`: every text field people type goes through these |
+| `src/lib/http.ts` | Request id + one log line per request (no query string, no body); security headers (`no-store`, `nosniff`, CSP, HSTS behind TLS) |
+| `src/lib/dailyCache.ts` | `invalidateDailyCache(userId)` plus an epoch so a running generation can't write a stale card back |
+| `src/lib/lifecycle.ts` | Shutdown signal shared with chat streams |
+| `src/ai/safety.ts` | Keyword risk check (`keywordRisk`, `combineRisk`), used by chat and onboarding as a floor under the model |
+| `test/*.test.ts` | `npm test`: node:test integration tests against the local database; `chat.test.ts` runs chat against a local stand-in for the Messages API |
 
 **XP:**
-- mood check-in 10; assessment 2 per question + 20 bonus
-- breathing and grounding 15 each, at most 5 times a day
-- guide step 5, once per step; journal 15; first chat of the day 10
+- mood check-in 10, the first 3 a day; assessment 2 per question + 20 bonus, once per check type a day
+- breathing and grounding 15 each, at most 5 times a day (past 30 a day they aren't recorded at all)
+- guide step 5, once per step (only the six real guides); journal 15, the first 3 a day; first chat of the day 10
+- every cap is checked inside a per-account database lock (`withUserLock` in `db.ts`), so parallel requests can't slip past it; past a cap the action still works and earns 0 XP
 
 **Levels:** Seed 0, Sprout 60, Seedling 150, Bud 300, Bloom 500, Blossom 800, Grove 1200, Garden 1800, Sanctuary 2600. The streak counts any activity on consecutive local days.
 
-**Chat** (`POST /conversations/:id/messages`):
+**Chat** (`POST /conversations/:id/messages`), written for Claude; on Groq the same loop runs through `GroqSession` with these differences: one system message (persona + context), no prompt caching or refusals, history capped at 16 messages / 7,000 characters and 15 memories (the free tier's tokens-per-minute limit), and no second request just to acknowledge tool results once the reply is written:
 1. Stores the user message, then streams SSE events: `user`, `delta`, `replace`, `suggestion`, `memory`, `reminder`, `signal`, `done`, `title`, `error`. There's a 15-second heartbeat.
 2. History is the last 40 messages, **visible text only**. That's deliberate: Opus 5.5 checks that history replayed with its thinking blocks hasn't been edited. Since the context block changes every turn, thinking blocks are never replayed across turns. Within one turn's tool loop the full assistant content is passed back.
 3. Request settings:
@@ -219,7 +254,33 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
 
 **Structured-output gotcha:** the SDK's `zodOutputFormat` turns zod enums into plain strings with the allowed values written in the description. So AI activity fields use `z.enum([...]).catch("none")`; otherwise one bad value would throw away the whole response.
 
-**Daily card:** generated once per user per day and cached in `daily_cache`. A new mood check-in or assessment deletes it so it regenerates. `/home` returns the cache only and starts generation in the background; the app then calls `/home/daily`.
+**Daily card:** generated once per user per day and cached in `daily_cache`. A cached card only counts if it was written after the latest check-in and assessment, so a check-in always brings a fresh one. Offline cards (AI off, failing, or over budget) are cached for 15 minutes so the model isn't called on every visit. Deleting a memory or journal entry, or changing the memory switch, tone or focus, clears the cache (`invalidateDailyCache`). `/home` returns the cache only and starts generation in the background; the app then calls `/home/daily`. The weekly reflection follows the same rules.
+
+### Security (round 4)
+
+What changed, by area. Each item maps to a finding from the audit.
+
+- **Config (`config.ts`):** every setting is validated at startup with zod. `JWT_SECRET` is always required, at least 32 characters, and placeholders are refused (there's no built-in fallback any more). `CHAT_EFFORT`, `CLAUDE_MODEL`, `PORT` and the voice ids are checked. New settings: `TRUST_PROXY`, `CORS_ORIGINS`, `LOG_REQUESTS`, `AI_DISABLED`, `VOICE_DISABLED`, `VOICE_CACHE_MAX_MB`, the daily budgets, and the demo-seed switches (all in `.env.example`). `npm start` sets `NODE_ENV=production`.
+- **Sign-in:** sign-up 20 an hour per address; login 30 per 15 minutes per address plus 10 failures per 15 minutes per account; unknown emails take as long as wrong passwords (dummy bcrypt hash); a duplicate sign-up race answers 409, not 500; emails capped at 254 characters and passwords at 72 bytes (bcrypt's limit). Tokens are pinned to HS256 and carry `ver` (the account's `token_version`): `POST /auth/logout` (the app's Sign out) and `POST /auth/password` bump it, revoking every older token. Tokens issued before round 4 have no `ver` and are treated as version 0, so nobody was signed out by the upgrade.
+- **Isolation:** every write includes the `user_id` predicate (reminder delete is one statement now). `/activities/guides` ignores unknown guide names (a stored name like `constructor` used to crash it).
+- **Input:** names, titles, emotions, reminder text are single-line and control-character free; notes, journal and chat keep line breaks but lose other control characters; focus areas are limited to the app's nine ids; time zones must be accepted by both Node and Postgres (offsets like `+05:30` mean opposite things in the two and used to break every date query); `GET /moods?days=` accepts any number.
+- **AI prompts:** the per-person context is wrapped in `<person_context>` and every system prompt that receives it says it is information, never instructions; person-entered text can't close the tag or fake a new line. The safety classifier gets the message inside `<message_to_assess>`. Model output is cleaned and length-capped before it is stored or shown. Logs never print model output or tool input.
+- **Memory switch:** with memory off, check-in notes no longer reach any prompt (context, weekly reflection), the `remember` tool is refused server-side too, and its setting is re-read inside the lock before saving.
+- **Safety:** `combineRisk` lifts the classifier's result to at least `concern` when the keyword check sees a clear statement (and uses the keyword result alone when the classifier fails). The signal is saved to the user message as soon as it arrives, even if the reply fails. A crisis signal always adds the `help_now` card, and a declined reply to a risky message is replaced with a caring one that points to the help lines.
+- **Chat costs:** 30 messages per 10 minutes and 200 a day per account, 2 replies at a time per account, `max_tokens` 8192 (was 64000), history capped at 40 messages and 24,000 characters, the persona and tools cached with `cache_control` (Opus 5.5 caches prefixes from 512 tokens), timeouts with one retry, no further tool rounds after the person leaves, and a re-issue only for the SDK's tool-JSON parse error. If a turn fails part way, what was written is saved with `meta.incomplete`.
+- **Voice:** cached clips are served first and cost nothing; new clips are limited per address (40 per 10 minutes), de-duplicated while in flight, capped at 4 at once and counted against `VOICE_DAILY_CHARS`; the cache is capped (least recently played clips are removed) and stray `.tmp` files are cleaned at startup; an unwritable cache folder no longer breaks voice; clips are `Cache-Control: private`.
+- **Errors and logs:** a response already streaming is closed cleanly on error; framework errors (413, 415, bad URL encoding) answer 4xx instead of 500; pg unique violations answer 409; 500s carry a request id and log without row values.
+- **Database:** pool `error` listener (a dropped idle connection used to crash the process), connection and statement timeouts, `/health` pings the database (503 when down), migrations take an advisory lock, startup retries while the database wakes up, per-account `withUserLock` for check-then-insert steps. Migration `002_security.sql` adds `users.token_version`, an email length check and an activities index.
+- **Shutdown:** SIGTERM stops chat streams (they save what they have and tell the person to try again shortly), closes connections after 5 s, and always exits within 10 s; uncaught errors are logged and trigger the same shutdown.
+- **Local setup:** `db:up` and `compose.yaml` bind Postgres to 127.0.0.1; `backend/.env` is `chmod 600`; the demo seed refuses non-local databases unless `ALLOW_DEMO_SEED=1` and a private `SEED_DEMO_PASSWORD` are set.
+
+**Accepted for now (deliberately not changed):**
+- No email verification or password reset: there's no email channel. Sign-up still answers 409 for a taken email (normal sign-up UX); the sign-up rate limit slows enumeration.
+- Account deletion needs only the session, not the password again (the app asks for confirmation first).
+- `/voice/speak` still speaks any text up to 300 characters to anyone: the per-address limit, daily character budget and cache cap bound the cost. Pip's lines (which can include the first name) still travel in the query string, so a host's own access logs may record them; the API's own logs strip query strings.
+- Rate limits and budgets live in one process; use a shared store if the API ever runs on several instances.
+- No row-level security: isolation is the `user_id` predicate in every query (all checked). Use a non-superuser database role when deploying.
+- `npx expo lint` reports older errors in files round 4 didn't touch (React rules about Reanimated shared values, and a notifications namespace import).
 
 ### App (`app/`): Expo SDK 58, RN 0.88, React 19.3, expo-router 58 (typed routes), Reanimated 4.7, TypeScript
 
@@ -295,7 +356,7 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
   - `usesCleartextTraffic: true` (via expo-build-properties) allows plain-HTTP LAN testing.
   - Release builds are signed with the debug key: installable, but not uploadable to the Play Store.
 - **Podman:** `podman compose` needs a podman socket service that isn't running. `npm run db:up` uses `podman run` directly, and `compose.yaml` is kept for Docker users.
-- **Chrome browser tools** are connected through the Claude in Chrome extension in the user's "Work" (trillmatching.com) Chrome profile. They can see only tabs Claude opens. The VS Code extension starts sessions with `--no-chrome` unless `/chrome` "Enabled by default" is on.
+- **Chrome browser tools** are connected through the Claude in Chrome extension in the user's work Chrome profile. They can see only tabs Claude opens. The VS Code extension starts sessions with `--no-chrome` unless `/chrome` "Enabled by default" is on.
 
 - **Round 2 gotchas:**
   - **Callbacks passed into effects:** a callback prop in a child's effect dependencies (`onListeningChange`) re-ran on every parent render and caused "Maximum update depth exceeded" while typing. Keep such callbacks in refs.
@@ -303,6 +364,18 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
   - **Chrome throttling:** when the Chrome window isn't focused, Chrome throttles it. rAF runs at about 4 fps, animations look frozen, timers are slow, and `Page.captureScreenshot` sometimes times out. Check the DOM with JavaScript instead.
   - **zod `.catch`:** a static `.catch("none")` converts fine with `zodOutputFormat`, but a function `.catch(() => …)` throws "Dynamic catch values are not supported". That would force every AI call offline.
   - **Expo Go:** `expo-speech-recognition` needs a dev build or the APK.
+
+- **Round 5 gotchas (Groq):**
+  - **`groq-sdk` obeys `retry-after` with no upper bound.** Once the free daily allowance is used up, Groq can answer 429 with a wait of an hour, and the SDK would sleep that long inside a request. The client is created with `maxRetries: 0`; `withGroqRetry()` retries once, only for waits of 5 seconds or less, server errors and dropped connections.
+  - **Groq rejects `messages[].name`**, and `reasoning_effort` / `include_reasoning` only apply to gpt-oss (and qwen) models; `groqReasoning(model)` sends them only there.
+  - **Strict JSON Schema mode** (gpt-oss, qwen) needs every property required and `additionalProperties: false`; zod's `toJSONSchema(schema, { io: "output" })` gives that. `$schema` and `default` keys are stripped. Other models fall back to `json_object` mode with the schema in the prompt.
+  - **Render:** don't set `NODE_ENV=production` in the host's environment, or `npm ci` skips the dev dependencies the TypeScript build needs (`npm start` sets it itself).
+
+- **Round 4 gotchas:**
+  - **Node 22 `IncomingMessage` `close`:** it fires once the request body has been read, not when the client leaves. Listen on the response (`res.on("close")`) to detect a client hanging up.
+  - **`pgrep -f` / `pkill -f` in Claude's shell** match the shell's own command line; kill by saved PID instead.
+  - **Express 5 handler types:** with extra middleware before a handler, `req.params.id` is typed `string | string[]`; wrap in `String()`.
+  - **Rate limits in tests:** sign-up is limited to 20 an hour per address, so the API tests share two accounts where they can. Each test file runs in its own process (fresh limiters).
 
 ## 8. About the user
 
