@@ -1,12 +1,13 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, type Href } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
 import { HandIcon } from '@/components/HandIcon';
+import { LumaDance } from '@/components/LumaDance';
 import { replayTour } from '@/components/PipTour';
 import { Sol } from '@/components/Sol';
 import { Button, Card, IconBadge, Row, Screen, SectionTitle, T, Tappable, type IconName } from '@/components/ui';
@@ -191,12 +192,13 @@ function ProfileCard() {
 const HOLD_MS = 5000;
 
 /**
- * Settings, with a secret: holding it for five seconds opens Luma's wardrobe.
- * While it's held the icon slowly turns and a soft tick comes each second; a
- * short tap just opens Settings.
+ * Settings, with a secret: holding it for five seconds makes Luma dance and ask
+ * to be dressed up, then opens Luma's wardrobe. While it's held the icon slowly
+ * turns and a soft tick comes each second; a short tap just opens Settings.
  */
 function SettingsRow() {
   const c = useTheme();
+  const [dancing, setDancing] = useState(false);
   const turn = useSharedValue(0);
   const ticks = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopTicks = () => {
@@ -207,41 +209,50 @@ function SettingsRow() {
   const iconStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 360}deg` }, { scale: 1 + turn.value * 0.18 }] }));
 
   return (
-    <Tappable
-      onPress={() => router.push('/settings')}
-      onPressIn={() => {
-        turn.value = withTiming(1, { duration: HOLD_MS, easing: Easing.in(Easing.quad) });
-        let second = 0;
-        stopTicks();
-        ticks.current = setInterval(() => {
-          second++;
-          if (second >= 2 && second < 5) haptic.tap();
-        }, 1000);
-      }}
-      onPressOut={() => {
-        stopTicks();
-        turn.value = withTiming(0, { duration: 400 });
-      }}
-      onLongPress={() => {
-        stopTicks();
-        haptic.success();
-        router.push('/sol-studio');
-      }}
-      delayLongPress={HOLD_MS}
-      style={{ paddingVertical: space.md }}
-      accessibilityRole="button"
-      accessibilityLabel="Settings"
-    >
-      <Row gap={space.md}>
-        <Animated.View style={iconStyle}>
-          <IconBadge icon="sliders" bg={c.skySoft} fg={c.sky} size={38} />
-        </Animated.View>
-        <T variant="bodyStrong" style={{ flex: 1 }}>
-          Settings
-        </T>
-        <Feather name="chevron-right" size={20} color={c.inkFaint} />
-      </Row>
-    </Tappable>
+    <>
+      <Tappable
+        onPress={() => router.push('/settings')}
+        onPressIn={() => {
+          turn.value = withTiming(1, { duration: HOLD_MS, easing: Easing.in(Easing.quad) });
+          let second = 0;
+          stopTicks();
+          ticks.current = setInterval(() => {
+            second++;
+            if (second >= 2 && second < 5) haptic.tap();
+          }, 1000);
+        }}
+        onPressOut={() => {
+          stopTicks();
+          turn.value = withTiming(0, { duration: 400 });
+        }}
+        onLongPress={() => {
+          stopTicks();
+          haptic.success();
+          setDancing(true);
+        }}
+        delayLongPress={HOLD_MS}
+        style={{ paddingVertical: space.md }}
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+      >
+        <Row gap={space.md}>
+          <Animated.View style={iconStyle}>
+            <IconBadge icon="sliders" bg={c.skySoft} fg={c.sky} size={38} />
+          </Animated.View>
+          <T variant="bodyStrong" style={{ flex: 1 }}>
+            Settings
+          </T>
+          <Feather name="chevron-right" size={20} color={c.inkFaint} />
+        </Row>
+      </Tappable>
+      <LumaDance
+        visible={dancing}
+        onDone={() => {
+          setDancing(false);
+          router.push('/sol-studio');
+        }}
+      />
+    </>
   );
 }
 
