@@ -4,6 +4,8 @@ import { buildUserContext } from "../ai/context.js";
 import { currentUser, type UserRow } from "../auth.js";
 import { FALLBACK_AFFIRMATIONS } from "../content/catalog.js";
 import { query, queryOne } from "../db.js";
+import { pgCode } from "../errors.js";
+import { cacheEpoch, OFFLINE_CACHE_MINUTES } from "../lib/dailyCache.js";
 import { progressSummary, todayIn } from "../lib/progress.js";
 
 export const homeRouter = Router();
@@ -42,10 +44,20 @@ function offlineDaily(day: string, latestMood: number | null): Daily {
 
 const inFlight = new Map<string, Promise<Daily>>();
 
+/**
+ * Today's cached card, if it is still current: written after the latest check-in
+ * and assessment (so a check-in during generation can't leave a stale card), and
+ * for offline cards only for a short while (so a failing model isn't retried on
+ * every visit, but is retried soon).
+ */
 async function cachedDaily(userId: string, day: string) {
   const row = await queryOne<{ payload: Daily }>(
-    "SELECT payload FROM daily_cache WHERE user_id = $1 AND day = $2 AND kind = 'daily'",
-    [userId, day],
+    `SELECT payload FROM daily_cache d
+     WHERE d.user_id = $1 AND d.day = $2 AND d.kind = 'daily'
+       AND d.created_at > COALESCE((SELECT max(created_at) FROM mood_entries WHERE user_id = $1), '-infinity')
+       AND d.created_at > COALESCE((SELECT max(created_at) FROM assessments WHERE user_id = $1), '-infinity')
+       AND (d.payload->>'source' IS DISTINCT FROM 'offline' OR d.created_at > now() - make_interval(mins => $3))`,
+    [userId, day, OFFLINE_CACHE_MINUTES],
   );
   return row?.payload ?? null;
 }
@@ -58,19 +70,24 @@ function ensureDaily(user: UserRow, day: string): Promise<Daily> {
   const work = (async () => {
     const cached = await cachedDaily(user.id, day);
     if (cached) return cached;
+    const epoch = cacheEpoch(user.id);
     const latest = await queryOne<{ mood: number }>(
       "SELECT mood FROM mood_entries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1",
       [user.id],
     );
     const context = await buildUserContext(user);
-    const ai = await generateDailyCard(context);
+    const ai = await generateDailyCard(context, { userId: user.id });
     const daily: Daily = ai ? { ...ai, source: "ai" } : offlineDaily(day, latest?.mood ?? null);
-    if (ai) {
+    // Skip the write if their data changed while this was being written (e.g. a memory was deleted).
+    if (epoch === cacheEpoch(user.id)) {
       await query(
         `INSERT INTO daily_cache (user_id, day, kind, payload) VALUES ($1, $2, 'daily', $3)
          ON CONFLICT (user_id, day, kind) DO UPDATE SET payload = EXCLUDED.payload, created_at = now()`,
         [user.id, day, daily],
-      );
+      ).catch((err) => {
+        // The account was deleted while the card was being written: nothing to keep.
+        if (pgCode(err) !== "23503") throw err;
+      });
     }
     return daily;
   })().finally(() => inFlight.delete(key));

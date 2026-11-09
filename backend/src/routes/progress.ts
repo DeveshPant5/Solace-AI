@@ -4,7 +4,10 @@ import { buildUserContext } from "../ai/context.js";
 import { currentUser } from "../auth.js";
 import { MOOD_LABELS } from "../content/catalog.js";
 import { query, queryOne } from "../db.js";
+import { pgCode } from "../errors.js";
+import { cacheEpoch, OFFLINE_CACHE_MINUTES } from "../lib/dailyCache.js";
 import { activeDays, computeStreaks, levelFor, todayIn, totalXp } from "../lib/progress.js";
+import { clip, oneLine } from "../lib/text.js";
 
 export const progressRouter = Router();
 
@@ -66,11 +69,15 @@ progressRouter.get("/reflection", async (req, res) => {
   const user = currentUser(req);
   const tz = user.timezone;
   const day = todayIn(tz);
-  const cached = await queryOne<{ payload: Reflection }>(
-    "SELECT payload FROM daily_cache WHERE user_id = $1 AND day = $2 AND kind = 'reflection'",
-    [user.id, day],
+  const cached = await queryOne<{ payload: Reflection & { source?: string } }>(
+    `SELECT payload FROM daily_cache WHERE user_id = $1 AND day = $2 AND kind = 'reflection'
+       AND (payload->>'source' IS DISTINCT FROM 'offline' OR created_at > now() - make_interval(mins => $3))`,
+    [user.id, day, OFFLINE_CACHE_MINUTES],
   );
-  if (cached) return void res.json({ reflection: cached.payload });
+  if (cached) {
+    const { source: _source, ...reflection } = cached.payload;
+    return void res.json({ reflection });
+  }
 
   const [moods, acts, journals] = await Promise.all([
     query<{ mood: number; emotions: string[]; note: string | null; created_at: string }>(
@@ -88,27 +95,33 @@ progressRouter.get("/reflection", async (req, res) => {
   ]);
   if (moods.length + acts.length === 0) return void res.json({ reflection: null });
 
+  // Check-in notes are personal writing: only shared with the AI while memory is on.
+  const memoryOn = user.preferences.memoryEnabled !== false;
   const fmt = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric" });
   const week = [
     ...moods.map(
       (m) =>
-        `- ${fmt.format(new Date(m.created_at))}: mood ${MOOD_LABELS[m.mood]}${m.emotions.length ? ` (${m.emotions.join(", ")})` : ""}${
-          m.note ? ` "${m.note.slice(0, 160)}"` : ""
-        }`,
+        `- ${fmt.format(new Date(m.created_at))}: mood ${MOOD_LABELS[m.mood]}${
+          m.emotions.length ? ` (${m.emotions.map((e) => clip(oneLine(e), 30)).join(", ")})` : ""
+        }${memoryOn && m.note ? ` "${clip(oneLine(m.note), 160)}"` : ""}`,
     ),
     `Activities: ${acts.map((a) => `${a.kind} x${a.n}`).join(", ") || "none"}`,
     `Journal entries: ${journals[0]?.n ?? 0}`,
   ].join("\n");
+  const epoch = cacheEpoch(user.id);
   const context = await buildUserContext(user);
-  const reflection = await generateWeeklyReflection(context, week);
-  if (reflection) {
+  const ai = await generateWeeklyReflection(context, week, { userId: user.id });
+  const reflection = ai ?? offlineReflection(moods, acts, journals[0]?.n ?? 0);
+  if (epoch === cacheEpoch(user.id)) {
     await query(
       `INSERT INTO daily_cache (user_id, day, kind, payload) VALUES ($1, $2, 'reflection', $3)
-       ON CONFLICT (user_id, day, kind) DO UPDATE SET payload = EXCLUDED.payload`,
-      [user.id, day, reflection],
-    );
+       ON CONFLICT (user_id, day, kind) DO UPDATE SET payload = EXCLUDED.payload, created_at = now()`,
+      [user.id, day, { ...reflection, source: ai ? "ai" : "offline" }],
+    ).catch((err) => {
+      if (pgCode(err) !== "23503") throw err;
+    });
   }
-  res.json({ reflection: reflection ?? offlineReflection(moods, acts, journals[0]?.n ?? 0) });
+  res.json({ reflection });
 });
 
 /** A simple, data-based reflection used when the AI is unavailable. */
