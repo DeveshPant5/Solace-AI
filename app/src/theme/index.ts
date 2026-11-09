@@ -108,24 +108,30 @@ export function daylight(c: Palette, date = new Date()): string {
   return (c.scheme === 'dark' ? darkTops : lightTops)[slot]!;
 }
 
+/**
+ * Newsreader (a calm, book-like serif) for headings and quotes, and Figtree (warm
+ * and clear) for everything else: closer to a well-made journal than a toy.
+ */
 export const fonts = {
-  display: 'Fraunces_600SemiBold',
-  displaySoft: 'Fraunces_500Medium',
-  regular: 'Nunito_400Regular',
-  medium: 'Nunito_600SemiBold',
-  bold: 'Nunito_700Bold',
-  heavy: 'Nunito_800ExtraBold',
+  display: 'Newsreader_600SemiBold',
+  displaySoft: 'Newsreader_500Medium',
+  quote: 'Newsreader_500Medium_Italic',
+  regular: 'Figtree_400Regular',
+  medium: 'Figtree_500Medium',
+  bold: 'Figtree_600SemiBold',
+  heavy: 'Figtree_700Bold',
 };
 
 export const type = {
-  hero: { fontFamily: fonts.display, fontSize: 34, lineHeight: 41, letterSpacing: -0.4 },
-  title: { fontFamily: fonts.display, fontSize: 27, lineHeight: 34, letterSpacing: -0.3 },
-  heading: { fontFamily: fonts.displaySoft, fontSize: 21, lineHeight: 28, letterSpacing: -0.1 },
-  subheading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 23 },
-  body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 23 },
-  bodyStrong: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 23 },
-  small: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 19 },
-  caption: { fontFamily: fonts.bold, fontSize: 12, lineHeight: 16, letterSpacing: 0.8, textTransform: 'uppercase' },
+  hero: { fontFamily: fonts.display, fontSize: 34, lineHeight: 40, letterSpacing: -0.5 },
+  title: { fontFamily: fonts.display, fontSize: 28, lineHeight: 34, letterSpacing: -0.4 },
+  heading: { fontFamily: fonts.displaySoft, fontSize: 22, lineHeight: 28, letterSpacing: -0.2 },
+  subheading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 23, letterSpacing: -0.1 },
+  body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 24 },
+  bodyStrong: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 24 },
+  small: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+  caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, letterSpacing: 0.6, textTransform: 'uppercase' },
+  quote: { fontFamily: fonts.quote, fontSize: 24, lineHeight: 32, letterSpacing: -0.2 },
 } satisfies Record<string, TextStyle>;
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28, xxxl: 40 };

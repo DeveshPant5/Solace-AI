@@ -173,7 +173,7 @@ export default function Home() {
             </Row>
             {daily ? (
               <Animated.View entering={FadeIn}>
-                <T variant="heading" style={{ marginTop: space.md, fontSize: 24, lineHeight: 31 }}>
+                <T variant="quote" style={{ marginTop: space.md }}>
                   “{daily.affirmation}”
                 </T>
               </Animated.View>
