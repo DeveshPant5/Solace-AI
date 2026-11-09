@@ -1,9 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 import { currentUser } from "../auth.js";
-import { query, queryOne } from "../db.js";
+import { GUIDE_IDS } from "../content/catalog.js";
+import { query, queryOne, withUserLock } from "../db.js";
 import { HttpError } from "../errors.js";
-import { recordActivity, XP } from "../lib/progress.js";
+import { invalidateDailyCache } from "../lib/dailyCache.js";
+import { countToday, DAILY_ROW_CAP, DAILY_XP_CAP, recordActivity, XP } from "../lib/progress.js";
+import { lineField, textField } from "../lib/text.js";
 
 const Id = z.uuid();
 const idParam = (raw: string) => {
@@ -16,39 +19,39 @@ const idParam = (raw: string) => {
 
 export const activitiesRouter = Router();
 
-const ActivityInput = z.object({
-  kind: z.enum(["breathing", "grounding", "guide_step"]),
-  meta: z
-    .object({
-      pattern: z.string().max(40).optional(),
-      seconds: z.number().int().min(0).max(7200).optional(),
-      guide: z.string().max(40).optional(),
-      step: z.number().int().min(0).max(20).optional(),
-    })
-    .default({}),
-});
+const Seconds = z.number().int().min(0).max(7200).optional();
+const ActivityInput = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("breathing"),
+    meta: z.object({ pattern: lineField(40).optional(), seconds: Seconds }).default({}),
+  }),
+  z.object({ kind: z.literal("grounding"), meta: z.object({ seconds: Seconds }).default({}) }),
+  z.object({
+    kind: z.literal("guide_step"),
+    meta: z.object({ guide: z.enum(GUIDE_IDS), step: z.number().int().min(0).max(20) }),
+  }),
+]);
 
 activitiesRouter.post("/", async (req, res) => {
   const user = currentUser(req);
   const body = ActivityInput.parse(req.body);
-  let xp: number = XP[body.kind];
-  if (body.kind === "guide_step") {
-    // Each guide step earns XP once.
-    const done = await queryOne(
-      "SELECT 1 FROM activities WHERE user_id = $1 AND kind = 'guide_step' AND meta->>'guide' = $2 AND (meta->>'step')::int = $3",
-      [user.id, body.meta.guide ?? "", body.meta.step ?? -1],
-    );
-    if (done) xp = 0;
-  } else {
-    // Practices earn XP up to 5 times a day so the streak stays honest.
-    const today = await queryOne<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM activities WHERE user_id = $1 AND kind = $2
-       AND (created_at AT TIME ZONE $3)::date = (now() AT TIME ZONE $3)::date`,
-      [user.id, body.kind, user.timezone],
-    );
-    if ((today?.n ?? 0) >= 5) xp = 0;
-  }
-  await recordActivity(user.id, body.kind, xp, body.meta);
+  const xp = await withUserLock(user.id, async (db) => {
+    if (body.kind === "guide_step") {
+      // Each guide step earns XP once, and is recorded once.
+      const done = await queryOne(
+        "SELECT 1 FROM activities WHERE user_id = $1 AND kind = 'guide_step' AND meta->>'guide' = $2 AND (meta->>'step')::int = $3",
+        [user.id, body.meta.guide, body.meta.step],
+        db,
+      );
+      if (done) return 0;
+      return recordActivity(user.id, body.kind, XP.guide_step, body.meta, db);
+    }
+    // Practices earn XP up to 5 times a day so the streak stays honest; past a generous cap they aren't stored at all.
+    const today = await countToday(db, user.id, body.kind, user.timezone);
+    if (today.n >= DAILY_ROW_CAP) return 0;
+    const earned = today.earned < DAILY_XP_CAP[body.kind] ? XP[body.kind] : 0;
+    return recordActivity(user.id, body.kind, earned, body.meta, db);
+  });
   res.status(201).json({ xp });
 });
 
@@ -56,12 +59,16 @@ activitiesRouter.get("/guides", async (req, res) => {
   const user = currentUser(req);
   const rows = await query<{ guide: string; step: number }>(
     `SELECT DISTINCT meta->>'guide' AS guide, (meta->>'step')::int AS step
-     FROM activities WHERE user_id = $1 AND kind = 'guide_step'`,
+     FROM activities WHERE user_id = $1 AND kind = 'guide_step' AND meta ? 'guide' AND meta ? 'step'`,
     [user.id],
   );
-  const done: Record<string, number[]> = {};
-  for (const r of rows) (done[r.guide] ??= []).push(r.step);
-  res.json({ done });
+  // A Map, not a plain object: a stored name like "constructor" must not collide with object built-ins.
+  const done = new Map<string, number[]>();
+  for (const r of rows) {
+    if (!(GUIDE_IDS as readonly string[]).includes(r.guide)) continue;
+    done.set(r.guide, [...(done.get(r.guide) ?? []), r.step]);
+  }
+  res.json({ done: Object.fromEntries(done) });
 });
 
 // ---------------- Journal ----------------
@@ -80,19 +87,30 @@ journalRouter.get("/", async (req, res) => {
 journalRouter.post("/", async (req, res) => {
   const user = currentUser(req);
   const body = z
-    .object({ prompt: z.string().trim().max(300).optional(), content: z.string().trim().min(1, "Write something first").max(10000) })
+    .object({
+      prompt: lineField(300).optional(),
+      content: textField(10000).pipe(z.string().min(1, "Write something first")),
+    })
     .parse(req.body);
-  const row = await queryOne<{ id: string; created_at: string }>(
-    "INSERT INTO journal_entries (user_id, prompt, content) VALUES ($1, $2, $3) RETURNING id, created_at",
-    [user.id, body.prompt || null, body.content],
-  );
-  const xp = await recordActivity(user.id, "journal", XP.journal);
-  res.status(201).json({ entry: { id: row!.id, prompt: body.prompt ?? null, content: body.content, createdAt: row!.created_at }, xp });
+  const { row, xp } = await withUserLock(user.id, async (db) => {
+    const today = await countToday(db, user.id, "journal", user.timezone);
+    const row = await queryOne<{ id: string; created_at: string }>(
+      "INSERT INTO journal_entries (user_id, prompt, content) VALUES ($1, $2, $3) RETURNING id, created_at",
+      [user.id, body.prompt || null, body.content],
+      db,
+    );
+    const earned = today.earned < DAILY_XP_CAP.journal ? XP.journal : 0;
+    const xp = await recordActivity(user.id, "journal", earned, {}, db);
+    return { row: row!, xp };
+  });
+  res.status(201).json({ entry: { id: row.id, prompt: body.prompt || null, content: body.content, createdAt: row.created_at }, xp });
 });
 
 journalRouter.delete("/:id", async (req, res) => {
   const user = currentUser(req);
-  await query("DELETE FROM journal_entries WHERE id = $1 AND user_id = $2", [idParam(req.params.id), user.id]);
+  const deleted = await query("DELETE FROM journal_entries WHERE id = $1 AND user_id = $2 RETURNING id", [idParam(req.params.id), user.id]);
+  // Today's AI cards may have drawn on this entry.
+  if (deleted.length) await invalidateDailyCache(user.id);
   res.status(204).end();
 });
 
@@ -111,13 +129,16 @@ memoriesRouter.get("/", async (req, res) => {
 
 memoriesRouter.delete("/:id", async (req, res) => {
   const user = currentUser(req);
-  await query("DELETE FROM memories WHERE id = $1 AND user_id = $2", [idParam(req.params.id), user.id]);
+  const deleted = await query("DELETE FROM memories WHERE id = $1 AND user_id = $2 RETURNING id", [idParam(req.params.id), user.id]);
+  // Today's AI cards may have drawn on this memory.
+  if (deleted.length) await invalidateDailyCache(user.id);
   res.status(204).end();
 });
 
 memoriesRouter.delete("/", async (req, res) => {
   const user = currentUser(req);
   await query("DELETE FROM memories WHERE user_id = $1", [user.id]);
+  await invalidateDailyCache(user.id);
   res.status(204).end();
 });
 
@@ -157,9 +178,11 @@ remindersRouter.get("/", async (req, res) => {
   res.json({ reminders: rows.map(toReminder) });
 });
 
+const MAX_REMINDERS = 30;
+
 const ReminderInput = z.object({
-  title: z.string().trim().min(1).max(60),
-  body: z.string().trim().max(160).nullable().optional(),
+  title: lineField(60).pipe(z.string().min(1)),
+  body: lineField(160).nullable().optional(),
   hour: z.number().int().min(0).max(23),
   minute: z.number().int().min(0).max(59),
   enabled: z.boolean().optional(),
@@ -168,13 +191,16 @@ const ReminderInput = z.object({
 remindersRouter.post("/", async (req, res) => {
   const user = currentUser(req);
   const body = ReminderInput.parse(req.body);
-  const count = await queryOne<{ n: number }>("SELECT COUNT(*) AS n FROM reminders WHERE user_id = $1", [user.id]);
-  if ((count?.n ?? 0) >= 30) throw new HttpError(400, "You can have up to 30 reminders", "limit");
-  const row = await queryOne<ReminderRow>(
-    `INSERT INTO reminders (user_id, kind, title, body, hour, minute, enabled)
-     VALUES ($1, 'custom', $2, $3, $4, $5, $6) RETURNING ${REMINDER_COLUMNS}`,
-    [user.id, body.title, body.body ?? null, body.hour, body.minute, body.enabled ?? true],
-  );
+  const row = await withUserLock(user.id, async (db) => {
+    const count = await queryOne<{ n: number }>("SELECT COUNT(*) AS n FROM reminders WHERE user_id = $1", [user.id], db);
+    if ((count?.n ?? 0) >= MAX_REMINDERS) throw new HttpError(400, `You can have up to ${MAX_REMINDERS} reminders`, "limit");
+    return queryOne<ReminderRow>(
+      `INSERT INTO reminders (user_id, kind, title, body, hour, minute, enabled)
+       VALUES ($1, 'custom', $2, $3, $4, $5, $6) RETURNING ${REMINDER_COLUMNS}`,
+      [user.id, body.title, body.body || null, body.hour, body.minute, body.enabled ?? true],
+      db,
+    );
+  });
   res.status(201).json({ reminder: toReminder(row!) });
 });
 
@@ -194,7 +220,7 @@ remindersRouter.patch("/:id", async (req, res) => {
       user.id,
       body.title ?? null,
       body.body !== undefined,
-      body.body ?? null,
+      body.body || null,
       body.hour ?? null,
       body.minute ?? null,
       body.enabled ?? null,
@@ -206,12 +232,11 @@ remindersRouter.patch("/:id", async (req, res) => {
 
 remindersRouter.delete("/:id", async (req, res) => {
   const user = currentUser(req);
-  const row = await queryOne<{ kind: string }>("SELECT kind FROM reminders WHERE id = $1 AND user_id = $2", [
-    idParam(req.params.id),
-    user.id,
-  ]);
+  const id = idParam(req.params.id);
+  // One statement with the ownership check, so the row checked is the row deleted.
+  const deleted = await query("DELETE FROM reminders WHERE id = $1 AND user_id = $2 AND kind = 'custom' RETURNING id", [id, user.id]);
+  if (deleted.length) return void res.status(204).end();
+  const row = await queryOne<{ kind: string }>("SELECT kind FROM reminders WHERE id = $1 AND user_id = $2", [id, user.id]);
   if (!row) throw new HttpError(404, "Reminder not found", "not_found");
-  if (row.kind !== "custom") throw new HttpError(400, "Built-in reminders can be turned off but not deleted", "not_allowed");
-  await query("DELETE FROM reminders WHERE id = $1", [req.params.id]);
-  res.status(204).end();
+  throw new HttpError(400, "Built-in reminders can be turned off but not deleted", "not_allowed");
 });
