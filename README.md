@@ -79,6 +79,7 @@ The APK has to reach the API from any phone, so the backend runs on a public hos
 
 1. Get a free Groq API key at https://console.groq.com/keys.
 2. Push the repo to GitHub, then in Render: **New → Blueprint**, connect the repo, and apply. When asked, paste `GROQ_API_KEY` (and `ELEVENLABS_API_KEY` if you want Pip's natural voice; leave it empty otherwise). `JWT_SECRET` is generated for you; `TRUST_PROXY=1` and `NODE_VERSION=22` are set.
+   Pip's natural voice only uses the free characters your ElevenLabs plan includes. When they run out, Pip switches to the phone's voice until the monthly reset, so a free ElevenLabs account never costs anything.
 3. When the deploy is live, open `https://<your-service>.onrender.com/health`: it should show `"ok":true` and `"ai":true`.
 4. Open `https://<your-service>.onrender.com/health/ip` on your phone and compare `ip` with your public IP (search "what is my ip"). If they differ, raise `TRUST_PROXY` by one in Render's environment settings until they match; rate limits rely on it.
 5. Build the APK against it: `cd app && API_URL=https://<your-service>.onrender.com npm run build:apk`. An `https://` address builds an APK that refuses plain HTTP.
@@ -95,7 +96,7 @@ What the API does to keep people's data and the owner's API budget safe (details
 - **Sign-in:** bcrypt passwords, rate limits per address and per account, the same timing for unknown emails, HS256-pinned tokens that sign-out and password changes revoke (`POST /auth/logout`, `POST /auth/password`).
 - **Isolation:** every query is scoped to the signed-in account; limits (reminders, memories, XP caps) are checked inside a per-account database lock so parallel requests can't slip past them.
 - **AI:** everything a person typed is passed to the model as tagged data, never as instructions; the memory switch keeps check-in notes, journal entries and past conversations out of prompts; a keyword check backs up the safety classifier, so a message about self-harm always gets the help card.
-- **Spending:** per-account limits on chat, daily budgets for the AI service and ElevenLabs, cached voice clips that cost nothing, request timeouts with one short retry (a "come back in an hour" rate limit is never waited out).
+- **Spending:** per-account limits on chat, daily budgets for the AI service and ElevenLabs, Pip's voice limited to the ElevenLabs plan's included characters, cached voice clips that cost nothing, request timeouts with one short retry (a "come back in an hour" rate limit is never waited out).
 - **Operations:** settings validated at startup, security headers, request ids and one log line per request (no bodies or query strings), database timeouts, graceful shutdown that saves half-written replies.
 
 ## API overview
