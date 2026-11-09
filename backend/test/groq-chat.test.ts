@@ -99,6 +99,14 @@ const mock = http.createServer((req, res) => {
         done("stop"),
       ]);
     }
+    if (said.includes("leak a marker please")) {
+      // The model writes one of its own control markers into the reply, split across chunks.
+      return stream(res, [
+        chunk({ role: "assistant", content: "Would you like a short breathing exercise? <|sugg" }),
+        chunk({ content: "est_activity|> I'm here either way. 2 < 3 is still fine." }),
+        done("stop"),
+      ]);
+    }
     if (said.includes("save this")) {
       // Calls the tool before writing anything, so a second round is needed for the reply.
       if (!hasToolResult) return stream(res, [...toolCall("remember", { fact: "Has a sister called Mira.", category: "people" }), done("tool_calls")]);
@@ -239,6 +247,16 @@ describe("chat with Luma (Groq)", () => {
     assert.equal(done.data.message.meta.suggestions[0].reason, "Ease tension");
     const streamed = events.filter((e) => e.event === "delta").map((e) => e.data.text).join("");
     assert.doesNotMatch(streamed, /"activity"/, "the JSON is never shown, even while streaming");
+  });
+
+  test("control markers the model writes into its reply never reach the person", async () => {
+    const { json } = await api("/conversations", "POST");
+    const events = await chat(json.conversation.id, "leak a marker please");
+    const done = events.find((e) => e.event === "done")!;
+    assert.equal(done.data.message.content, "Would you like a short breathing exercise? I'm here either way. 2 < 3 is still fine.");
+    const streamed = events.filter((e) => e.event === "delta").map((e) => e.data.text).join("");
+    assert.doesNotMatch(streamed, /<\|/, "not even while streaming");
+    assert.match(streamed, /2 < 3/, "an ordinary < is kept");
   });
 
   test("a used-up daily allowance gets a calm 'resting' message", async () => {

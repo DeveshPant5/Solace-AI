@@ -167,6 +167,41 @@ interface TurnOptions {
  * holds back anything that starts like a JSON object; when the object closes, it
  * becomes a tool call if it looks like one, and is let through as text if not.
  */
+/**
+ * Models in Groq's chat format sometimes write their own control markers into the reply,
+ * like `<|suggest_activity|>` or `<|call|>`. They mean nothing to a person, so they're
+ * dropped as the reply streams. A marker split across chunks is held until it closes
+ * (or clearly isn't one).
+ */
+const MARKER = / ?<\|[a-z0-9_.:\- ]{1,48}\|>/gi;
+class MarkerFilter {
+  private held = '';
+  /** How many markers were dropped, so the saved reply gets tidied too. */
+  dropped = 0;
+  constructor(private readonly out: (text: string) => void) {}
+
+  push(delta: string) {
+    let text = this.held + delta;
+    this.held = '';
+    text = text.replace(MARKER, () => {
+      this.dropped++;
+      return '';
+    });
+    // Hold back a trailing "<" or "<|..." that may be the start of a marker.
+    const open = text.lastIndexOf('<');
+    if (open !== -1 && !text.slice(open).includes('>') && text.length - open <= 52 && /^<(\|[a-z0-9_.:\- ]*\|?)?$/i.test(text.slice(open))) {
+      this.held = text.slice(open);
+      text = text.slice(0, open);
+    }
+    if (text) this.out(text);
+  }
+
+  flush() {
+    if (this.held) this.out(this.held);
+    this.held = '';
+  }
+}
+
 class JsonInTextFilter {
   private held = '';
   private depth = 0;
@@ -242,6 +277,9 @@ function toolCallFromJson(text: string): { name: string; input: Record<string, u
 /** Removes code-fence leftovers (```json ... ```) and extra blank lines once a written-out tool call is taken out. */
 function tidyReply(text: string) {
   return text
+    .replace(MARKER, "")
+    // A dropped marker can leave two spaces between words.
+    .replace(/(\S) {2,}(?=\S)/g, "$1 ")
     .replace(/```[a-z]*\s*```/gi, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -277,9 +315,12 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
       result.text += delta;
       opts.emit("delta", { text: delta });
     });
+    // Control markers are dropped first, then written-out tool calls are caught.
+    const markers = new MarkerFilter((text) => filter.push(text));
     let step;
     try {
-      step = await session.step((delta) => filter.push(delta));
+      step = await session.step((delta) => markers.push(delta));
+      markers.flush();
       filter.flush();
     } catch (err) {
       if (!(err instanceof RetryableStepError) || shutdownSignal.aborted || retries >= MAX_RETRIES) throw err;
@@ -301,7 +342,7 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
       break;
     }
     // A tool call written into the reply: run it as if it had been called, and tidy what's left of the text.
-    if (filter.calls.length) {
+    if (filter.calls.length || markers.dropped) {
       for (const [i, call] of filter.calls.entries()) {
         await runTool({ id: `written_${iteration}_${i}`, name: call.name, input: call.input }, opts, result);
       }
