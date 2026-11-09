@@ -71,7 +71,10 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - the AI layer now runs on Groq by default (`openai/gpt-oss-120b` for chat, `openai/gpt-oss-20b` for JSON jobs); Claude stays available with `AI_PROVIDER=anthropic`
   - `npm test`: 38 tests, including 6 for Groq against a local stand-in for its API (streaming, strict JSON on the fast model, tool calls with and without a written reply, daily-limit and busy-minute messages, check-in fallback when rate limited)
   - production build checked: `npm run build` then `npm start` serves from `dist/` with migrations applied
-  - `render.yaml` (Render Blueprint) and `.github/workflows/keep-awake.yml` added; not deployed yet (needs the user's Render account, Groq key and a push to GitHub)
+  - `render.yaml` (Render Blueprint) and `.github/workflows/keep-awake.yml` added; pushed to GitHub (30 commits on 2026-11-09); the user is setting up the Render Blueprint
+  - **live with the user's Groq key** (local backend): Pip's help, check-in replies, chat, activity cards and the reminder tool all work on real Groq models in about a second each. At a human pace (20 s between messages) everything stays on `gpt-oss-120b`; back-to-back messages trip the 8K tokens-a-minute limit, which the fallback chain now absorbs
+  - this key can use only `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b` (plus guard/audio models); the Llama models in Groq's docs return 404 for it. Fallbacks: chat 120b → qwen → 20b; JSON 20b → qwen. A retired model (404) is skipped with a log line
+  - safety: an unsafe-sounding message emits the keyword signal at once, and gets a caring reply plus the `help_now` card even when the AI is off, resting, restarting or rate limited (`sendSafetyReply` in `routes/conversations.ts`). Sol's persona now says not to quote phone numbers (Qwen once told an Indian user to text 988)
 
 ### Not yet tested
 - **Everything that calls a real AI service** (no Groq or Anthropic key on the machine yet; only local stand-ins were used):
@@ -105,7 +108,7 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
    - venting, anxiety, asking for a reminder, mentioning a person or event (should be remembered)
    - a crisis phrase (should show the safety card)
    - a check-in, an assessment, the Home daily card, the Journey reflection
-   - judge the tone of `openai/gpt-oss-120b`; if it feels less warm, try `GROQ_CHAT_MODEL=llama-3.3-70b-versatile` (smaller free daily allowance: about 100,000 tokens) and compare
+   - judge the tone of `openai/gpt-oss-120b`; if it feels less warm, try `GROQ_CHAT_MODEL=qwen/qwen3.8-27b` (felt warmer and more conversational in a live test) and compare
 2. Deploy (the APK must work on any phone, so the backend needs a public HTTPS address). The user asked for this on 2026-11-09:
    - commit and push (only when the user says so); Render deploys from GitHub
    - Render → New → Blueprint → this repo → paste `GROQ_API_KEY` (and optionally `ELEVENLABS_API_KEY`); `render.yaml` creates the API (`solace-api`, Singapore, free) and a free Postgres
@@ -239,7 +242,7 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
 
 **Levels:** Seed 0, Sprout 60, Seedling 150, Bud 300, Bloom 500, Blossom 800, Grove 1200, Garden 1800, Sanctuary 2600. The streak counts any activity on consecutive local days.
 
-**Chat** (`POST /conversations/:id/messages`), written for Claude; on Groq the same loop runs through `GroqSession` with these differences: one system message (persona + context), no prompt caching or refusals, history capped at 16 messages / 7,000 characters and 15 memories (the free tier's tokens-per-minute limit), and no second request just to acknowledge tool results once the reply is written:
+**Chat** (`POST /conversations/:id/messages`), written for Claude; on Groq the same loop runs through `GroqSession` with these differences: one system message (persona + context), no prompt caching or refusals, history capped at 12 messages / 5,000 characters and 12 memories (the free tier's tokens-per-minute limit), and no second request just to acknowledge tool results once the reply is written:
 1. Stores the user message, then streams SSE events: `user`, `delta`, `replace`, `suggestion`, `memory`, `reminder`, `signal`, `done`, `title`, `error`. There's a 15-second heartbeat.
 2. History is the last 40 messages, **visible text only**. That's deliberate: Opus 5.5 checks that history replayed with its thinking blocks hasn't been edited. Since the context block changes every turn, thinking blocks are never replayed across turns. Within one turn's tool loop the full assistant content is passed back.
 3. Request settings:
@@ -366,6 +369,8 @@ What changed, by area. Each item maps to a finding from the audit.
   - **Expo Go:** `expo-speech-recognition` needs a dev build or the APK.
 
 - **Round 5 gotchas (Groq):**
+  - **Groq's docs can list models a key can't use.** Check with `groq.models.list()` (the Llama models were listed in the docs but answered 404 `model_not_found`).
+  - **Free limits are per model and per minute:** about 8K tokens a minute each. One Sol turn is roughly 3 to 4K tokens, so two quick messages fill a minute; the fallback chain and the trimmed Groq prompt (12 messages, 5,000 characters, 12 memories) keep normal-paced chat working.
   - **`groq-sdk` obeys `retry-after` with no upper bound.** Once the free daily allowance is used up, Groq can answer 429 with a wait of an hour, and the SDK would sleep that long inside a request. The client is created with `maxRetries: 0`; `withGroqRetry()` retries once, only for waits of 5 seconds or less, server errors and dropped connections.
   - **Groq rejects `messages[].name`**, and `reasoning_effort` / `include_reasoning` only apply to gpt-oss (and qwen) models; `groqReasoning(model)` sends them only there.
   - **Strict JSON Schema mode** (gpt-oss, qwen) needs every property required and `additionalProperties: false`; zod's `toJSONSchema(schema, { io: "output" })` gives that. `$schema` and `default` keys are stripped. Other models fall back to `json_object` mode with the schema in the prompt.

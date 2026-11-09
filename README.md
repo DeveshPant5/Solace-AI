@@ -33,7 +33,8 @@ All AI runs on the backend. By default it uses **Groq**, which serves open model
 
 - **Companion chat** (`backend/src/ai/companion.ts` with one adapter per service in `ai/chatProviders.ts`): streamed with Server-Sent Events to the app. A fixed persona prompt plus a per-person context block (built fresh each request from the database, `ai/context.ts`) so memory changes take effect immediately. Three tools: `suggest_activity`, `remember`, `create_reminder`. Only the visible text of earlier turns is replayed.
 - **Structured calls** (`ai/analysis.ts`, JSON checked against a schema): per-message mood + risk signal, conversation titles, daily affirmation/focus card, assessment next steps, mood check-in reply, weekly reflection, Pip's onboarding help.
-- **Free-tier limits:** Groq's free models allow roughly 8,000 tokens a minute and 200,000 a day each, which is plenty for a demo and a few testers (about 50 chat replies a day). When a limit is hit, chat says Sol is resting or busy and everything else falls back to offline content.
+- **Free-tier limits:** Groq's free models allow roughly 8,000 tokens a minute and 200,000 a day each. When one is used up, the request moves to the next free model (`qwen/qwen3.8-27b`, then `openai/gpt-oss-20b`), which roughly triples the allowance: plenty for a demo and a few testers chatting at a normal pace. If all are used up, chat says Sol is busy or resting and everything else falls back to offline content.
+- **Safety first:** a message that sounds like self-harm or danger shows the help card at once, and still gets a caring reply pointing to the help lines even when the AI is off, rate limited or resting. Sol never quotes phone numbers itself; the card shows the right local ones.
 - **Without an API key** everything except chat still works: the app falls back to built-in affirmations, suggestions and next steps.
 
 ## Run it locally
