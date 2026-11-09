@@ -1,6 +1,15 @@
 # UI refresh plan: calmer and more professional
 
-Status: plan only, nothing changed yet. Written 2026-11-09 after the user said the app "looks a little bit gimmicky" and the fonts should look more professional.
+Status: partly done (2026-11-09). Written after the user said the app "looks a little bit gimmicky" and the fonts should look more professional.
+
+**Done, following the user's answers:**
+- Fonts: **Newsreader** for headings and the daily affirmation (italic), **Figtree** for everything else (the user wanted a "human touch", so a humanist pair instead of Inter). Fraunces and Nunito removed.
+- Icons: every icon tile, focus chip, Settings appearance option and grounding step now uses Solace's own hand-drawn icons (`src/components/HandIcon.tsx`): slightly uneven strokes, a faint pencil second line, a watercolour wash off the line, on hand-cut pebble shapes. Feather stays only for small functional glyphs (chevrons, buttons).
+- Achievements: stitched patches with their own drawings (sprout, growing sprouts, sun, wind, footprints, notebook, speech bubble with a heart, compass).
+- Sol has little arms, mitten hands and feet on larger sizes; when joyful it waves.
+- **Kept, per the user:** Sol's face on the centre tab button, and the overall layout and colours ("it is pretty good").
+
+The rest of this plan (neutral cards, fewer Sol faces, XP labels) is on hold unless the user asks for it.
 
 ## What makes it feel gimmicky today
 
