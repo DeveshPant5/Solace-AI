@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { api, setAuthToken, setUnauthorizedHandler } from './api';
+import { appleCredential, googleCredential } from './socialAuth';
 import { storage } from './storage';
 import type { CheckinTime, Tone, User } from './types';
 
@@ -26,12 +27,25 @@ interface AuthState {
   saveOnboarding(answers: OnboardingAnswers): Promise<void>;
   signIn(email: string, password: string): Promise<void>;
   signUp(name: string, email: string, password: string): Promise<void>;
+  /**
+   * Google or Apple: signs in, or makes the account (with the onboarding answers) the first time.
+   * `name` is what to call them if this creates the account. Resolves false if they backed out.
+   * Throws SocialAuthError (gentle notes and provider errors) or ApiError.
+   */
+  signInWithProvider(provider: 'google' | 'apple', opts?: { name?: string }): Promise<boolean>;
   signOut(): Promise<void>;
   updateUser(patch: Partial<Pick<User, 'name'>> & { profile?: User['profile']; preferences?: User['preferences'] }): Promise<User>;
   deleteAccount(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
+
+/** What onboarding learned, in the shape the API stores on the account. */
+const profileFrom = (answers: OnboardingAnswers | null) =>
+  answers ? { focus: answers.focus, intention: answers.intention || undefined, checkinTime: answers.checkinTime } : {};
+
+/** An existing account has already been shown around: no tour or first-visit tips on this device. */
+const skipTour = async (userId: string) => (await import('@/components/PipTour')).markTourSeen(userId).catch(() => undefined);
 
 const timezone = () => {
   try {
@@ -102,8 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signIn(email, password) {
         const r = await api<{ token: string; user: User }>('/auth/login', { body: { email, password } });
-        // An existing account has already been shown around: no tour or first-visit tips on this device.
-        await (await import('@/components/PipTour')).markTourSeen(r.user.id).catch(() => undefined);
+        await skipTour(r.user.id);
         await finishAuth(r.token, r.user);
       },
       async signUp(name, email, password) {
@@ -115,12 +128,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password,
             timezone: timezone(),
             tone: answers?.tone,
-            profile: answers
-              ? { focus: answers.focus, intention: answers.intention || undefined, checkinTime: answers.checkinTime }
-              : {},
+            profile: profileFrom(answers),
           },
         });
         await finishAuth(r.token, r.user);
+      },
+      async signInWithProvider(provider, opts) {
+        const credential = provider === 'google' ? await googleCredential() : await appleCredential();
+        if (!credential) return false;
+        const r = await api<{ token: string; user: User; created: boolean }>(`/auth/${provider}`, {
+          body: {
+            token: credential.token,
+            name: opts?.name?.trim() || credential.name || undefined,
+            timezone: timezone(),
+            tone: onboarding?.tone,
+            profile: profileFrom(onboarding),
+          },
+        });
+        if (!r.created) await skipTour(r.user.id);
+        await finishAuth(r.token, r.user);
+        return true;
       },
       async signOut() {
         // Ends the session on the server too, so a copied token stops working. Offline is fine: sign out locally anyway.

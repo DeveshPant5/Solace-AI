@@ -5,6 +5,7 @@ import { TextInput, View } from 'react-native';
 
 import { ONBOARDING_LAST_STAGE } from '@/components/Pip';
 import { PipGuide } from '@/components/PipGuide';
+import { SocialSignIn } from '@/components/SocialSignIn';
 import { Button, ErrorNote, Header, inputStyle, Row, Screen, T } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -99,6 +100,8 @@ export default function SignUp() {
         {error && <ErrorNote message={error} />}
         <Button title="Create account" onPress={submit} loading={busy} style={{ marginTop: space.sm }} />
       </View>
+
+      <SocialSignIn name={name} disabled={busy} />
 
       <Row style={{ justifyContent: 'center', marginTop: space.xl }} gap={6}>
         <T variant="small" color={c.inkSoft}>

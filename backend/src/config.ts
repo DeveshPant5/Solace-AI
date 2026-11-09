@@ -27,6 +27,10 @@ const modelList = z
   .string()
   .transform((v) => v.split(",").map((m) => m.trim()).filter(Boolean))
   .pipe(z.array(z.string().regex(MODEL_ID, "expected Groq model ids, comma-separated")));
+const idList = z
+  .string()
+  .transform((v) => v.split(",").map((id) => id.trim()).filter(Boolean))
+  .pipe(z.array(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{2,200}$/, "expected ids, comma-separated")));
 const int = (min: number, max: number) => z.coerce.number().int().min(min).max(max);
 const flag = z.enum(["0", "1", "true", "false"]).transform((v) => v === "1" || v === "true");
 
@@ -118,6 +122,19 @@ export const config = {
   voiceCacheDir: read("VOICE_CACHE_DIR"),
   /** ElevenLabs API address (overridable for tests). */
   elevenLabsBaseUrl: parse("ELEVENLABS_BASE_URL", z.url(), "https://api.elevenlabs.io"),
+
+  // ---------- Sign in with Google / Apple ----------
+  /**
+   * OAuth client ids whose Google ID tokens are accepted (the token's `aud`). The app
+   * asks for tokens for its Web client id, so that one is enough; list it first, because
+   * GET /auth/providers hands the first id to the app. Empty turns Google off.
+   */
+  googleClientIds: parse("GOOGLE_CLIENT_IDS", idList, ""),
+  /** Apple's `aud` is the iOS bundle id (add host.exp.Exponent to test in Expo Go). */
+  appleAudiences: parse("APPLE_AUDIENCES", idList, "com.solace.companion"),
+  /** Where the providers publish their signing keys (overridable for tests). */
+  googleJwksUrl: parse("GOOGLE_JWKS_URL", z.url(), "https://www.googleapis.com/oauth2/v3/certs"),
+  appleJwksUrl: parse("APPLE_JWKS_URL", z.url(), "https://appleid.apple.com/auth/keys"),
 
   // ---------- Spending limits (per server process, reset at midnight UTC) ----------
   budget: {

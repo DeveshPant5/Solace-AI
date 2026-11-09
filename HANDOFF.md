@@ -1,6 +1,6 @@
 # Solace AI: project handoff
 
-Everything a new session needs to pick up this project. Last updated **2026-11-09** (round 2: warm light UI, voice, AI onboarding; round 3: Pip replaces Ray, screen tips, calm-by-design; round 4: security audit and backend hardening, see section 6 "Security"; round 5: Luma moved to Groq's free open models and the backend made deployable on Render). Read this first, then `README.md` for setup and feature details.
+Everything a new session needs to pick up this project. Last updated **2026-11-09** (latest: Sign in with Google and Apple; round 2: warm light UI, voice, AI onboarding; round 3: Pip replaces Ray, screen tips, calm-by-design; round 4: security audit and backend hardening, see section 6 "Security"; round 5: Luma moved to Groq's free open models and the backend made deployable on Render). Read this first, then `README.md` for setup and feature details.
 
 ---
 
@@ -104,6 +104,15 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - Reminders: `syncReminders()` schedules one DATE notification per planned day for the next 10 days (ids `task-<id>-<YYYY-MM-DD>`), skips today's if done, tops up when the app comes back after 30+ minutes, and leaves the running timer's notification (`solace-timer`) alone. Finishing a practice (`refreshTodaysTasks()`) or ticking cancels today's reminder for that task. Syncs no longer overlap.
   - Not tested on a phone yet: the reminders and the timer notification. Checked on the web preview with a throwaway account (list, editor, saving, Home card, timer running).
 
+- **Sign in with Google and Apple (2026-11-09, the user's request):** "Continue with Google" and "Continue with Apple" under the email form on sign-up and sign-in (`components/SocialSignIn.tsx`, an "or" divider then two warm-white pill buttons with the providers' own logos, which their brand rules require unchanged). The user asked for sign-up; sign-in got them too so a Google account can get back in.
+  - App: `lib/socialAuth.ts` (native) loads `@react-native-google-signin/google-signin` (free "Original" API; the Web client id comes from the public `GET /auth/providers`, i.e. the first id in the server's `GOOGLE_CLIENT_IDS`, unless `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` builds one in, so setting it in Render turns Google on without an APK rebuild) and `expo-apple-authentication` (iOS only) on first tap, so Expo Go doesn't crash; it signs out of Google right after getting the token so the account picker shows each time. `lib/socialAuth.web.ts` and Apple on Android answer with a gentle note in a soft card instead of an error ("Sign in with Apple works on iPhone. Here, Google or email will do nicely."). `signInWithProvider` in `auth.tsx` sends the token, the typed name (sign-up), Apple's first-time name and the onboarding answers; an existing account skips the tour like email sign-in.
+  - Backend: `POST /auth/google` and `POST /auth/apple` (`routes/auth.ts`), tokens checked with `jose` against Google's / Apple's published keys: RS256, issuer, audience (`GOOGLE_CLIENT_IDS`, `APPLE_AUDIENCES` default `com.solace.companion`), expiry, issued within the hour (`lib/identityTokens.ts`). Migration `004_social_sign_in.sql`: `password_hash` nullable, `user_identities (provider, subject) → user_id`. Name: typed name, else Google's first name, else "friend". Email login on a password-less account answers `use_provider` ("This account signs in with Google…"); password change answers `no_password`.
+  - Linking rule: a verified email that matches a Google/Apple-only account links to it; one that matches a **password** account is refused (409 `use_password`), because sign-ups aren't email-verified and whoever registered the address first would otherwise get into the real owner's account.
+  - `test/social.test.ts`: 11 tests against a local stand-in for both key sets (new account with onboarding answers, sign back in, names, no password, no takeover of a password account, six kinds of bad token, unverified email, Apple relay email, Apple + Google on one email, deletion removes the link, `/auth/providers`). `npm test`: 67 pass.
+  - Checked on the web preview: both screens show the buttons, and tapping gives the gentle notes. Not checked on a phone: the real Google picker (needs the user's Google Cloud setup, Next steps 0b) and Apple (needs an iOS build).
+  - Needs an APK rebuild (new native module). The Google plugin is added by `app.config.js` only when `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` is set (without Firebase it requires `iosUrlScheme`, and Android doesn't need it).
+  - `npx expo lint` installs ESLint and writes `eslint.config.js` when none exists; it was removed again after linting the new files (clean).
+
 ### Not yet tested
 - **Everything that calls a real AI service** (no Groq or Anthropic key on the machine yet; only local stand-ins were used):
   - streaming chat and its three tools
@@ -132,6 +141,7 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
    - open the welcome screen, choose "Yes, talk me through it" and listen to Pip
    - if ElevenLabs answers 402, or the voice doesn't feel calm enough, set `PIP_VOICE_ID` to another voice from the ElevenLabs library (pick a soft, warm one)
    - generated clips are cached in `backend/.cache/voice/`; delete them after changing the voice
+0b. **Google sign-in setup (the user, in Google Cloud Console):** follow README → "Sign in with Google and Apple": consent screen (add test users while in Testing), a **Web** OAuth client, an **Android** client for `com.solace.companion` with SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` (the template debug key the APK script signs with; it's the same on every `prebuild --clean`). Then `GOOGLE_CLIENT_IDS=<web id>` in Render's environment (a `sync: false` var added to `render.yaml` after the Blueprint exists must be set by hand in the dashboard) and in `backend/.env` for local use, and try it on the phone; no APK rebuild needed, the app reads the id from `GET /auth/providers`.
 1. The user creates a free Groq key at https://console.groq.com/keys and puts it in `backend/.env` as `GROQ_API_KEY=…` (the line exists, empty), then restarts the backend (`tsx watch` doesn't reload on `.env` changes). `/health` should show `"ai":true`. Then test chat properly:
    - venting, anxiety, asking for a reminder, mentioning a person or event (should be remembered)
    - a crisis phrase (should show the safety card)
@@ -252,6 +262,7 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
 | `src/ai/companion.ts` | Luma's persona, 3 tools, and the streaming loop |
 | `src/ai/analysis.ts` | Per-message signal (mood/emotions/risk), title, daily card, assessment moves, check-in reply, weekly reflection |
 | `src/seed-demo.ts` | Demo data |
+| `src/lib/identityTokens.ts` | Verifies Google / Apple ID tokens with `jose` (remote key sets, cached; `GOOGLE_JWKS_URL` / `APPLE_JWKS_URL` overridable for tests); a fetch failure answers 503 `provider_unreachable`, a bad token 401 `invalid_identity_token` |
 | `src/routes/onboarding.ts`, `src/ai/onboarding.ts` | Public `POST /onboarding/assist`: Pip's rephrasings (persona: soft, unhurried, calming), focus picks and tone previews. Structured output, offline fallback, concern detection (AI flag OR keywords), and output clean-up for speech (no emoji or dashes, word caps). Stateless; logs no text. |
 | `src/routes/voice.ts` | Public `GET /voice/speak?text=` (1–300 chars). Proxies ElevenLabs streaming TTS and writes a disk cache at `backend/.cache/voice/<sha256>.mp3` (gitignored). Supports Range requests for Safari; returns 503 `voice_off` without a key and 502 `voice_failed` on upstream errors. |
 | `src/lib/rateLimit.ts` | In-memory `RateLimiter` plus `rateLimit()` (per IP) and `userRateLimit()` (per account) middleware; bounded key maps. The IP comes from `req.ip`, which only trusts `X-Forwarded-For` when `TRUST_PROXY` is set. |
@@ -307,7 +318,7 @@ What changed, by area. Each item maps to a finding from the audit.
 - **Local setup:** `db:up` and `compose.yaml` bind Postgres to 127.0.0.1; `backend/.env` is `chmod 600`; the demo seed refuses non-local databases unless `ALLOW_DEMO_SEED=1` and a private `SEED_DEMO_PASSWORD` are set.
 
 **Accepted for now (deliberately not changed):**
-- No email verification or password reset: there's no email channel. Sign-up still answers 409 for a taken email (normal sign-up UX); the sign-up rate limit slows enumeration.
+- No email verification or password reset: there's no email channel. Because of that, Google/Apple sign-in never links to an existing password account with the same email (see Status → Sign in with Google and Apple). Sign-up still answers 409 for a taken email (normal sign-up UX); the sign-up rate limit slows enumeration.
 - Account deletion needs only the session, not the password again (the app asks for confirmation first).
 - `/voice/speak` still speaks any text up to 300 characters to anyone: the per-address limit, daily character budget and cache cap bound the cost. Pip's lines (which can include the first name) still travel in the query string, so a host's own access logs may record them; the API's own logs strip query strings.
 - Rate limits and budgets live in one process; use a shared store if the API ever runs on several instances.

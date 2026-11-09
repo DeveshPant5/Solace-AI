@@ -32,6 +32,9 @@ services:
         sync: false
       - key: ELEVENLABS_API_KEY
         sync: false
+      # Sign in with Google: the Web OAuth client id (see README, "Sign in with Google and Apple").
+      - key: GOOGLE_CLIENT_IDS
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: solace-db

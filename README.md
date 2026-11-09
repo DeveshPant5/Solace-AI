@@ -15,7 +15,7 @@ solace AI/
 | Area | What it does |
 |---|---|
 | **Opening** | Warm sunrise splash. **Pip**, a little walking flower pot (the seedling Luma planted for you), guides onboarding with an opt-in, calm natural voice (ElevenLabs, falling back to the device voice) and a mic so people can talk instead of type. There are 5 steps: name, "what's on your mind", focus areas, check-in time, and Luma's tone. While you type, Pip quietly suggests better wording, pre-picks focus areas and previews how Luma would reply in each tone (AI, with offline fallbacks). Pip then introduces Luma with a short first-run tour of Home, and gives a one-time tip the first time you open each main screen. Pip's sprout grows with your garden level (shown on Home and Journey). |
-| **Accounts** | Email + password sign-up/sign-in (bcrypt + JWT), token kept in the device keychain. Account deletion removes everything. |
+| **Accounts** | Email + password, **Continue with Google** (Android; iOS once it has a client id) or **Continue with Apple** (iPhone), on both sign-up and sign-in. The API checks each Google/Apple ID token's signature, issuer and audience before trusting it. Tokens kept in the device keychain. Account deletion removes everything. |
 | **Home** | Time-aware greeting, one-tap mood check-in where Luma's face and colour follow your mood, an **AI-written daily affirmation and focus** grounded in your recent check-ins, quick actions, "pick up where you left off", and your growing garden (XP level). |
 | **Luma (AI companion)** | Streaming chat with a distinct personality and three tones (gentle / cheerful / direct). Luma knows your recent moods, check-in results, journal entries and things you've shared, and can **open activity cards** (breathing, grounding, journaling with a tailored prompt, guides…), **save memories**, and **create reminders** from inside the conversation. Every message is also read for mood and safety; crisis language brings up a support card with helplines. |
 | **Chat history** | Conversations are stored, titled automatically, listed with previews, can be continued or deleted. |
@@ -74,6 +74,20 @@ API_URL=http://<your-computer-wifi-ip>:4000 npm run build:apk   # → ../builds/
 
 Install the APK on an Android phone on the same Wi-Fi. On Fedora, the firewall blocks port 4000 by default; allow it with `sudo firewall-cmd --add-port=4000/tcp` (add `--permanent` to keep it), or deploy the backend.
 
+## Sign in with Google and Apple
+
+Both buttons sit under the email form on sign-up and sign-in. The app gets an ID token from Google or Apple and sends it to `POST /auth/google` or `POST /auth/apple`; the API checks it against the provider's published keys and either signs the person in or creates the account (with their onboarding answers). Accounts made this way have no password. An email that already belongs to a password account isn't linked automatically (sign-ups aren't email-verified, so someone could have registered that address first); the person is asked to sign in with their password.
+
+**Google (Android APK)** — free, about 10 minutes in [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
+1. Create a project, then set up the **OAuth consent screen** (External, app name Solace, your email). While it's in "Testing", add the Google accounts that may sign in as test users, or publish it.
+2. **Create credentials → OAuth client ID → Web application** (name "Solace server"). Copy its client id.
+3. **Create credentials → OAuth client ID → Android**: package name `com.solace.companion`, SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` (the debug key `scripts/build-apk.sh` signs with; check yours with `keytool -list -v -keystore ~/.cache/solace-apk-build/app/android/app/debug.keystore -storepass android`). Nothing from this client is copied anywhere; Google only needs it to exist.
+4. Put the **Web** client id on the server: `GOOGLE_CLIENT_IDS=<web client id>` in Render's environment for the deployed API (and in `backend/.env` for local use). No APK rebuild is needed: the app reads it from `GET /auth/providers`. (To build it into the app instead, set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `app/.env`.)
+
+Google sign-in needs a real build (not Expo Go) and has no web version in the free library; on the web preview the button explains that. If Google answers `DEVELOPER_ERROR`, the Android client's package name or SHA-1 doesn't match the APK.
+
+**Apple (iPhone only)** — Sign in with Apple has no Android version, so on Android and web the button says it works on iPhone. An iOS build needs a paid Apple Developer account with the Sign in with Apple capability for `com.solace.companion` (`ios.usesAppleSignIn` and the plugin are already in `app.json`). The API accepts Apple tokens for that bundle id by default (`APPLE_AUDIENCES`). For Google on iOS, also create an iOS OAuth client and set `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`; `app.config.js` then adds Google's URL scheme.
+
 ## Deploying the backend
 
 The APK has to reach the API from any phone, so the backend runs on a public host with HTTPS. The repo includes a Render Blueprint (`render.yaml`) that creates the API and a free Postgres database in one go.
@@ -102,7 +116,7 @@ What the API does to keep people's data and the owner's API budget safe (details
 
 ## API overview
 
-`POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/password` · `GET|PATCH|DELETE /me` · `GET /home`, `GET /home/daily` · `POST|GET /moods` · `GET /assessments/catalog`, `POST|GET /assessments` · `GET|POST /conversations`, `GET|PATCH|DELETE /conversations/:id`, `POST /conversations/:id/messages` (SSE) · `GET /progress`, `GET /progress/reflection` · `POST /activities`, `GET /activities/guides` · `GET|POST /journal`, `DELETE /journal/:id` · `GET|DELETE /memories[/:id]` · `GET|POST /reminders`, `PATCH|DELETE /reminders/:id` · `GET|POST /tasks`, `PATCH|DELETE /tasks/:id`, `POST /tasks/:id/done` · public: `POST /onboarding/assist`, `GET /voice/speak?text=` (audio/mpeg) · `GET /health`
+`POST /auth/signup`, `POST /auth/login`, `GET /auth/providers`, `POST /auth/google`, `POST /auth/apple`, `POST /auth/logout`, `POST /auth/password` · `GET|PATCH|DELETE /me` · `GET /home`, `GET /home/daily` · `POST|GET /moods` · `GET /assessments/catalog`, `POST|GET /assessments` · `GET|POST /conversations`, `GET|PATCH|DELETE /conversations/:id`, `POST /conversations/:id/messages` (SSE) · `GET /progress`, `GET /progress/reflection` · `POST /activities`, `GET /activities/guides` · `GET|POST /journal`, `DELETE /journal/:id` · `GET|DELETE /memories[/:id]` · `GET|POST /reminders`, `PATCH|DELETE /reminders/:id` · `GET|POST /tasks`, `PATCH|DELETE /tasks/:id`, `POST /tasks/:id/done` · public: `POST /onboarding/assist`, `GET /voice/speak?text=` (audio/mpeg) · `GET /health`
 
 ## Submission checklist (from the brief)
 

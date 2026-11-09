@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
+import { SocialSignIn } from '@/components/SocialSignIn';
 import { Sol } from '@/components/Sol';
 import { Button, ErrorNote, Header, inputStyle, Row, Screen, T } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
@@ -70,6 +71,7 @@ export default function SignIn() {
         {error && <ErrorNote message={error} />}
         <Button title="Sign in" onPress={submit} loading={busy} style={{ marginTop: space.sm }} />
       </View>
+      <SocialSignIn disabled={busy} />
       <Row style={{ justifyContent: 'center', marginTop: space.xl }} gap={6}>
         <T variant="small" color={c.inkSoft}>
           New here?
