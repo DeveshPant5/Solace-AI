@@ -109,6 +109,10 @@ export const config = {
   elevenLabsModel: parse("ELEVENLABS_MODEL", z.string().regex(/^[a-z0-9_]{3,60}$/, "expected an ElevenLabs model id"), "eleven_flash_v2_5"),
   voiceDisabled: parse("VOICE_DISABLED", flag, "0"),
   voiceCacheMaxMb: parse("VOICE_CACHE_MAX_MB", int(10, 100_000), "200"),
+  /** Where Pip's clips are cached (default backend/.cache/voice). */
+  voiceCacheDir: read("VOICE_CACHE_DIR"),
+  /** ElevenLabs API address (overridable for tests). */
+  elevenLabsBaseUrl: parse("ELEVENLABS_BASE_URL", z.url(), "https://api.elevenlabs.io"),
 
   // ---------- Spending limits (per server process, reset at midnight UTC) ----------
   budget: {

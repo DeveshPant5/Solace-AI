@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { requireAuth } from "./auth.js";
-import { aiEnabled, config, voiceEnabled } from "./config.js";
+import { aiEnabled, config } from "./config.js";
 import { databaseReachable } from "./db.js";
 import { errorHandler, notFound } from "./errors.js";
 import { requestContext, securityHeaders } from "./lib/http.js";
@@ -15,7 +15,7 @@ import { activitiesRouter, journalRouter, memoriesRouter, remindersRouter } from
 import { moodsRouter } from "./routes/moods.js";
 import { onboardingRouter } from "./routes/onboarding.js";
 import { progressRouter } from "./routes/progress.js";
-import { voiceRouter } from "./routes/voice.js";
+import { voiceAvailable, voiceRouter } from "./routes/voice.js";
 
 export function createApp() {
   const app = express();
@@ -39,7 +39,8 @@ export function createApp() {
 
   app.get("/health", async (_req, res) => {
     const db = await databaseReachable();
-    res.status(db ? 200 : 503).json({ ok: db, db: db ? "up" : "down", ai: aiEnabled, voice: voiceEnabled });
+    // voice is false while Pip's natural voice is paused (e.g. free ElevenLabs credits used up): the app then uses the phone's voice.
+    res.status(db ? 200 : 503).json({ ok: db, db: db ? "up" : "down", ai: aiEnabled, voice: voiceAvailable() });
   });
 
   // For checking TRUST_PROXY after deploying: open it from your phone and compare with your public IP.

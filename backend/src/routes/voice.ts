@@ -18,14 +18,16 @@ import { clientIp, rateLimit, RateLimiter, tooMany } from "../lib/rateLimit.js";
 // VOICE_CACHE_MAX_MB; the least recently played clips are removed past that.
 //
 // Cost controls, in order: cached clips are free; new clips are limited per
-// address, de-duplicated while in flight, capped in concurrency, and counted
-// against a daily character budget. Whenever a clip can't be made, the app
-// falls back to the phone's own voice.
+// address, de-duplicated while in flight, capped in concurrency, counted
+// against a daily character budget, and only made while the ElevenLabs plan
+// still has included (free) characters left. Whenever a clip can't be made,
+// the app falls back to the phone's own voice.
 
 export const voiceRouter = Router();
 
-const CACHE_DIR = fileURLToPath(new URL("../../.cache/voice/", import.meta.url));
-const ELEVENLABS_URL = "https://api.elevenlabs.io/v1/text-to-speech";
+const CACHE_DIR = config.voiceCacheDir ?? fileURLToPath(new URL("../../.cache/voice/", import.meta.url));
+const ELEVENLABS_API = config.elevenLabsBaseUrl.replace(/\/$/, "");
+const ELEVENLABS_URL = `${ELEVENLABS_API}/v1/text-to-speech`;
 const OUTPUT_FORMAT = "mp3_44100_64";
 // Calm and warm: steadier than default, very little added style, and a touch slower than normal speech.
 const VOICE_SETTINGS = { stability: 0.6, similarity_boost: 0.75, style: 0.05, use_speaker_boost: true, speed: 0.92 };
@@ -43,10 +45,13 @@ voiceRouter.get("/speak", rateLimit({ limit: 300, windowMs: 10 * 60_000 }), asyn
 
   const fileName = `${cacheKey(text)}.mp3`;
   const cacheOk = await cache.ready();
+  // Clips made earlier cost nothing to replay, even after the free credits run out.
   if (cacheOk && (await cache.has(fileName))) return sendCached(res, fileName);
 
+  if (!voiceAvailable()) throw restingVoice();
   const key = clientIp(req);
   if (!newClipLimiter.take(key)) throw tooMany(newClipLimiter.retryAfter(key));
+  if (!(await hasFreeCredits(text.length))) throw restingVoice();
 
   if (cacheOk) {
     // Requests for the same new line share one ElevenLabs call.
@@ -131,12 +136,100 @@ async function synthesize(text: string) {
   if (!upstream.ok || !upstream.body || /json|^text\//.test(type)) {
     const detail = await upstream.text().catch(() => "");
     console.error(`[voice] ElevenLabs answered ${upstream.status}: ${upstreamMessage(detail)}`);
+    const quotaProblem = quotaError(upstream.status, detail);
+    if (quotaProblem) {
+      credits.remaining = 0;
+      pauseVoice(quotaProblem);
+      throw restingVoice();
+    }
     throw voiceFailed();
   }
+  credits.remaining = credits.remaining === null ? null : credits.remaining - text.length;
   return { body: upstream.body };
 }
 
 const voiceFailed = () => new HttpError(502, "Pip's voice is unavailable right now", "voice_failed");
+const restingVoice = () => new HttpError(503, "Pip's voice is resting for now", "voice_off");
+
+// ---------- Free credits only ----------
+//
+// Pip only uses the characters the ElevenLabs plan already includes, so a free
+// account never costs anything: before a new clip the server checks how many
+// characters are left (from ElevenLabs, at most hourly, counting locally in
+// between) and stops a little before the limit. A "quota exceeded" answer stops
+// it too. While paused, /health reports voice off and the app uses the phone's
+// voice; the natural voice comes back by itself when the monthly credits reset.
+
+const CREDITS_RECHECK_MS = 60 * 60_000;
+/** Stop this many characters before the plan's limit. */
+const CREDITS_RESERVE = 200;
+const credits = { remaining: null as number | null, checkedAt: 0, resetAt: 0, pausedUntil: 0 };
+
+/** Whether Pip's natural voice is on right now (set up, and not paused for credits). */
+export function voiceAvailable(): boolean {
+  return voiceEnabled && Date.now() >= credits.pausedUntil;
+}
+
+function pauseVoice(reason: string) {
+  const now = Date.now();
+  if (now < credits.pausedUntil) return;
+  // Check again in an hour (or at the reset, if that's sooner), in case credits renewed or the plan changed.
+  const until = credits.resetAt > now ? Math.min(credits.resetAt, now + CREDITS_RECHECK_MS) : now + CREDITS_RECHECK_MS;
+  credits.pausedUntil = until;
+  credits.checkedAt = 0; // re-read the balance when the pause ends
+  console.warn(`[voice] ${reason}; Pip uses the phone's voice until ${new Date(until).toISOString()}`);
+}
+
+/** Reads the plan's remaining characters from ElevenLabs. Failures are ignored (the quota error check still applies). */
+async function refreshCredits() {
+  credits.checkedAt = Date.now();
+  try {
+    const res = await fetch(`${ELEVENLABS_API}/v1/user/subscription`, {
+      headers: { "xi-api-key": config.elevenLabsApiKey ?? "" },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return;
+    const plan = (await res.json()) as { character_count?: unknown; character_limit?: unknown; next_character_count_reset_unix?: unknown };
+    if (typeof plan.character_count === "number" && typeof plan.character_limit === "number") {
+      credits.remaining = plan.character_limit - plan.character_count;
+    }
+    credits.resetAt = typeof plan.next_character_count_reset_unix === "number" ? plan.next_character_count_reset_unix * 1000 : 0;
+  } catch {
+    // Unreachable or no permission to read the plan: rely on ElevenLabs' own quota answer.
+  }
+}
+
+/** True if a clip of `chars` characters fits in the plan's remaining free characters. */
+async function hasFreeCredits(chars: number): Promise<boolean> {
+  if (Date.now() - credits.checkedAt > CREDITS_RECHECK_MS) await refreshCredits();
+  if (credits.remaining !== null && credits.remaining - chars < CREDITS_RESERVE) {
+    pauseVoice("ElevenLabs free credits are used up");
+    return false;
+  }
+  return true;
+}
+
+/** If an ElevenLabs error means "no credits left" (or the key is unusable), the reason; otherwise null. */
+export function quotaError(status: number, body: string): string | null {
+  let code = "";
+  try {
+    const detail = (JSON.parse(body) as { detail?: { status?: unknown } }).detail;
+    code = typeof detail?.status === "string" ? detail.status : "";
+  } catch {
+    // not JSON
+  }
+  if (code === "quota_exceeded" || /quota/i.test(code)) return "ElevenLabs free credits are used up";
+  if (status === 402 || code === "payment_required") return "ElevenLabs needs a paid plan for this request";
+  if (code === "invalid_api_key" || (status === 401 && !code)) return "ElevenLabs rejected the API key";
+  return null;
+}
+
+// Learn the balance at startup, so /health is right from the first request.
+if (voiceEnabled) {
+  void refreshCredits().then(() => {
+    if (credits.remaining !== null && credits.remaining < CREDITS_RESERVE) pauseVoice("ElevenLabs free credits are used up");
+  });
+}
 
 // ---------- Disk cache ----------
 
