@@ -22,6 +22,7 @@ solace AI/
 | **Practices** | Calm, box and 4-7-8 breathing with an animated circle and haptics; 5-4-3-2-1 grounding; three short wellbeing check-ins (PHQ/GAD-based mood and anxiety, plus self-kindness) with **AI-personalised next steps**; six step-by-step guides; journal with rotating prompts. |
 | **Journey** | Level + garden illustration, streaks with a week strip, 14-day mood chart, counts, achievements, and **Sol's weekly reflection** (AI) on patterns in your week. |
 | **Reminders** | Daily mood check-in, affirmation (a different one each day), breathing and self-care reminders, plus your own. Local scheduled notifications work with the app closed, and tapping one opens the right screen. |
+| **Daily tasks** | Plan things to do each day at a set time: one of the app's practices (calm, box or 4-7-8 breathing, grounding, journal, check-in) or your own (yoga, a walk, drink water…), on chosen days, with an optional timer for your own. A gentle reminder arrives at that time and opens the practice or the timer. Today's tasks appear on Home with a tick; doing a practice in the app ticks its task by itself, and today's reminder is skipped once it's done. |
 | **Privacy** | "What Sol remembers" lets you view/delete each memory, forget everything, or turn memory off entirely. |
 | **Support** | Region-aware helplines (India: Tele-MANAS 14416; US: 988; UK & Ireland: Samaritans), Find A Helpline for everywhere else. |
 
@@ -94,14 +95,14 @@ Free plan notes:
 What the API does to keep people's data and the owner's API budget safe (details in `HANDOFF.md`):
 
 - **Sign-in:** bcrypt passwords, rate limits per address and per account, the same timing for unknown emails, HS256-pinned tokens that sign-out and password changes revoke (`POST /auth/logout`, `POST /auth/password`).
-- **Isolation:** every query is scoped to the signed-in account; limits (reminders, memories, XP caps) are checked inside a per-account database lock so parallel requests can't slip past them.
+- **Isolation:** every query is scoped to the signed-in account; limits (reminders, tasks, memories, XP caps) are checked inside a per-account database lock so parallel requests can't slip past them.
 - **AI:** everything a person typed is passed to the model as tagged data, never as instructions; the memory switch keeps check-in notes, journal entries and past conversations out of prompts; a keyword check backs up the safety classifier, so a message about self-harm always gets the help card.
 - **Spending:** per-account limits on chat, daily budgets for the AI service and ElevenLabs, Pip's voice limited to the ElevenLabs plan's included characters, cached voice clips that cost nothing, request timeouts with one short retry (a "come back in an hour" rate limit is never waited out).
 - **Operations:** settings validated at startup, security headers, request ids and one log line per request (no bodies or query strings), database timeouts, graceful shutdown that saves half-written replies.
 
 ## API overview
 
-`POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/password` · `GET|PATCH|DELETE /me` · `GET /home`, `GET /home/daily` · `POST|GET /moods` · `GET /assessments/catalog`, `POST|GET /assessments` · `GET|POST /conversations`, `GET|PATCH|DELETE /conversations/:id`, `POST /conversations/:id/messages` (SSE) · `GET /progress`, `GET /progress/reflection` · `POST /activities`, `GET /activities/guides` · `GET|POST /journal`, `DELETE /journal/:id` · `GET|DELETE /memories[/:id]` · `GET|POST /reminders`, `PATCH|DELETE /reminders/:id` · public: `POST /onboarding/assist`, `GET /voice/speak?text=` (audio/mpeg) · `GET /health`
+`POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/password` · `GET|PATCH|DELETE /me` · `GET /home`, `GET /home/daily` · `POST|GET /moods` · `GET /assessments/catalog`, `POST|GET /assessments` · `GET|POST /conversations`, `GET|PATCH|DELETE /conversations/:id`, `POST /conversations/:id/messages` (SSE) · `GET /progress`, `GET /progress/reflection` · `POST /activities`, `GET /activities/guides` · `GET|POST /journal`, `DELETE /journal/:id` · `GET|DELETE /memories[/:id]` · `GET|POST /reminders`, `PATCH|DELETE /reminders/:id` · `GET|POST /tasks`, `PATCH|DELETE /tasks/:id`, `POST /tasks/:id/done` · public: `POST /onboarding/assist`, `GET /voice/speak?text=` (audio/mpeg) · `GET /health`
 
 ## Submission checklist (from the brief)
 

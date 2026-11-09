@@ -87,6 +87,12 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - Lighter screens: removed most secondary lines (Practices and Journey subtitles, check-in blurbs and XP line, quick-start and You-tab row subtitles, achievement descriptions, Journey hints); shorter Sol intro and privacy note. The Breathe & ground cards size to their content and share one height (152 px, no empty middle).
   - The AI-companion disclaimer under the chat box is gone (the user asked).
   - Breathing screen: the sentence inside the circle ("In for 5, out for 5…") looked cramped. The circle now shows only Sol until you begin, and below it sits a small strip of counts built from the pattern's `phases` (`5 in ~ 5 out`, hand-drawn waves between them) with a short italic line from the pattern's `feel` field. While running, the current step is sage and the others fade; "Round x of y" sits under it. Box breathing's four steps fit a 360 dp phone (304 px).
+- **Daily tasks (2026-11-09, the user's idea):** people plan things to do each day at a set time, and Solace reminds them.
+  - A task is one of the app's practices (calm/box/4-7-8 breathing, grounding, journal, check-in) or their own (yoga, stretching, a walk, meditation, drink water, read, or anything typed), at a time, on chosen days (bitmask, bit 0 = Sunday), with an optional timer (own tasks only) and a reminder switch.
+  - Backend: `migrations/003_tasks.sql` (`tasks`, `task_completions`), `routes/tasks.ts` (`GET|POST /tasks`, `PATCH|DELETE /tasks/:id`, `POST /tasks/:id/done` with `{done:false}` to untick). A practice task counts as done when that practice was recorded today (`breathing` with the matching `meta.pattern`, `grounding`, `journal`, `mood_checkin`), so it can't be unticked (`doneVia: 'practice'`). Ticking your own task earns 10 XP (first 5 a day); unticking deletes that XP row. Max 20 tasks. 7 tests in `api.test.ts`.
+  - App: `/tasks` (Today / Other days, ideas when empty), `/tasks/edit` (modal; also takes `activity`, `title`, `hour`, `minute`, `minutes` params to prefill), `/tasks/[id]` (own task: a calm ring timer that counts from an end time, so it survives the background, with a "time's up" notification; or "Mark as done"). Home has a "Today's plan" card with ticks; You and Reminders link to it; the breathing finish screen offers "Make it a daily habit".
+  - Reminders: `syncReminders()` schedules one DATE notification per planned day for the next 10 days (ids `task-<id>-<YYYY-MM-DD>`), skips today's if done, tops up when the app comes back after 30+ minutes, and leaves the running timer's notification (`solace-timer`) alone. Finishing a practice (`refreshTodaysTasks()`) or ticking cancels today's reminder for that task. Syncs no longer overlap.
+  - Not tested on a phone yet: the reminders and the timer notification. Checked on the web preview with a throwaway account (list, editor, saving, Home card, timer running).
 
 ### Not yet tested
 - **Everything that calls a real AI service** (no Groq or Anthropic key on the machine yet; only local stand-ins were used):
@@ -224,9 +230,9 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
 | `src/app.ts` | Routes; everything except `/auth` and `/health` sits behind `requireAuth` |
 | `src/config.ts` | Env vars, validated at startup; `aiProvider` ("groq" / "anthropic" / null) from `AI_PROVIDER` and the keys; `aiEnabled` |
 | `src/db.ts` | Pool. DATE columns come back as `YYYY-MM-DD` strings; int8 and numeric as numbers |
-| `src/migrate.ts`, `migrations/001_init.sql` | Tables: users, mood_entries, assessments, conversations, messages, memories, activities (all XP), journal_entries, reminders, daily_cache |
+| `src/migrate.ts`, `migrations/001_init.sql` | Tables: users, mood_entries, assessments, conversations, messages, memories, activities (all XP), journal_entries, reminders, daily_cache (`003_tasks.sql` adds tasks and task_completions) |
 | `src/auth.ts` | JWT (30 days, HS256, carries the account's `token_version`), `requireAuth`, `currentUser(req)`, `safeTimezone` (async: a zone both Node and Postgres accept) |
-| `src/routes/*` | auth, me (GET/PATCH/DELETE account), home (+`/home/daily`), moods, assessments (+`/catalog`), conversations (SSE), progress (+`/reflection`), misc.ts (activities, journal, memories, reminders) |
+| `src/routes/*` | auth, me (GET/PATCH/DELETE account), home (+`/home/daily`), moods, assessments (+`/catalog`), conversations (SSE), progress (+`/reflection`), misc.ts (activities, journal, memories, reminders), tasks.ts (daily tasks) |
 | `src/lib/progress.ts` | XP values, levels, streaks computed in the user's time zone |
 | `src/content/assessments.ts` | Question sets, scoring bands, offline "moves" |
 | `src/content/catalog.ts` | Activity IDs the AI may suggest, plus offline affirmations |
@@ -346,6 +352,7 @@ What changed, by area. Each item maps to a finding from the audit.
 - Reminders are stored on the server. `syncReminders()` cancels everything and reschedules:
   - DAILY triggers for mood, breathing, self-care and custom reminders
   - 7 one-off DATE triggers for affirmations, each with a different text; today's uses the AI affirmation
+  - daily tasks: one DATE trigger per planned day, 10 days ahead, skipping today's once done (see Status → Daily tasks)
 - It runs on sign-in and app start, and after any reminder change or a reminder Sol creates.
 - Taps go to `data.url`: mood → `/checkin`, affirmation → `/`, breathing → `/breathe/calm`, self-care → `/practices`, custom → `/sol`.
 - Permission is requested once, automatically, after sign-in.
