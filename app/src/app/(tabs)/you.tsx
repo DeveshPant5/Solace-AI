@@ -103,6 +103,9 @@ export default function You() {
         <T variant="small" color={c.inkSoft}>
           Your check-ins, journal and conversations are private to your account. You can delete any of them, or your whole account, at any time. Solace is a wellbeing companion, not a medical service.
         </T>
+        <T variant="small" color={c.inkSoft}>
+          To reply, Sol and Pip send what you share to Groq, a service that runs open AI models. When Pip’s voice is on, Pip’s lines go to ElevenLabs to be spoken.
+        </T>
       </Card>
 
       <Button

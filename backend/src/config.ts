@@ -22,6 +22,7 @@ function parse<T extends z.ZodType>(name: string, schema: T, fallback: z.input<T
   return result.data;
 }
 
+const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._\/:-]{2,100}$/;
 const int = (min: number, max: number) => z.coerce.number().int().min(min).max(max);
 const flag = z.enum(["0", "1", "true", "false"]).transform((v) => v === "1" || v === "true");
 
@@ -74,6 +75,17 @@ export const config = {
   corsOrigins,
   logRequests: parse("LOG_REQUESTS", flag, "1"),
 
+  // ---------- AI provider ----------
+  /** "auto" uses Groq when GROQ_API_KEY is set, otherwise Claude when ANTHROPIC_API_KEY is set. */
+  aiProviderSetting: parse("AI_PROVIDER", z.enum(["auto", "groq", "anthropic"]), "auto"),
+
+  // ---------- Groq (open models, free tier) ----------
+  groqApiKey: read("GROQ_API_KEY"),
+  /** Sol's chat. Needs tool use; gpt-oss-120b also has the largest free daily allowance. */
+  groqChatModel: parse("GROQ_CHAT_MODEL", z.string().regex(MODEL_ID, "expected a Groq model id"), "openai/gpt-oss-120b"),
+  /** Short structured jobs (mood signal, titles, daily card, Pip's help). Free limits are per model, so this spreads the load. */
+  groqFastModel: parse("GROQ_FAST_MODEL", z.string().regex(MODEL_ID, "expected a Groq model id"), "openai/gpt-oss-20b"),
+
   // ---------- Claude ----------
   anthropicApiKey: read("ANTHROPIC_API_KEY"),
   claudeModel: parse("CLAUDE_MODEL", z.string().regex(/^claude-[a-z0-9.-]+$/, "expected a Claude model id"), "claude-opus-5-5"),
@@ -103,5 +115,23 @@ export const config = {
   },
 };
 
-export const aiEnabled = Boolean(config.anthropicApiKey) && !config.aiDisabled;
+function pickProvider(): "groq" | "anthropic" | null {
+  const setting = config.aiProviderSetting;
+  if (setting === "groq") {
+    if (!config.groqApiKey) fail("AI_PROVIDER=groq needs GROQ_API_KEY");
+    return "groq";
+  }
+  if (setting === "anthropic") {
+    if (!config.anthropicApiKey) fail("AI_PROVIDER=anthropic needs ANTHROPIC_API_KEY");
+    return "anthropic";
+  }
+  return config.groqApiKey ? "groq" : config.anthropicApiKey ? "anthropic" : null;
+}
+
+/** Which AI service powers Sol and the AI suggestions, or null when AI is off (offline content is used). */
+export const aiProvider = config.aiDisabled ? null : pickProvider();
+export const aiEnabled = aiProvider !== null;
+/** For logs: the model that writes Sol's replies. */
+export const aiChatModel =
+  aiProvider === "groq" ? `${config.groqChatModel} on Groq` : aiProvider === "anthropic" ? `${config.claudeModel} (Anthropic)` : null;
 export const voiceEnabled = Boolean(config.elevenLabsApiKey) && !config.voiceDisabled;
