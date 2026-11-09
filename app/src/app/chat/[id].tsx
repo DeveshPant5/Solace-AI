@@ -1,23 +1,21 @@
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityCard } from '@/components/ActivityCard';
-import { MicButton } from '@/components/MicButton';
+import { ChatHistorySheet } from '@/components/ChatHistorySheet';
 import { Sol } from '@/components/Sol';
 import { TypingDots } from '@/components/TypingDots';
 import { Button, ErrorNote, Header, IconButton, Row, T, Tappable } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { streamChat } from '@/lib/chatStream';
-import { confirm } from '@/lib/confirm';
 import { formatTime } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { syncReminders } from '@/lib/notifications';
 import type { ChatMessage, ChatSignal, Suggestion } from '@/lib/types';
-import { setSolVoice, speakAsSol, stopSpeaking, useSolVoice } from '@/lib/voice';
 import { radius, shadow, space, type as typeScale, useTheme } from '@/theme';
 
 const PENDING = 'pending-reply';
@@ -113,8 +111,9 @@ export default function Chat() {
   const list = useRef<FlatList<ChatMessage>>(null);
   const startedWith = useRef(false);
   const abort = useRef<AbortController | null>(null);
-  const solVoice = useSolVoice();
-  const dictationBase = useRef('');
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -132,7 +131,6 @@ export default function Chat() {
     void load();
     return () => {
       abort.current?.abort();
-      stopSpeaking();
     };
   }, [load]);
 
@@ -198,7 +196,6 @@ export default function Chat() {
                 gotReply = true;
                 setMessages((list) => list.map((m) => (m.id === PENDING ? (data.message as ChatMessage) : m)));
                 haptic.soft();
-                void speakAsSol((data.message as ChatMessage).content);
                 break;
               case 'title':
                 setTitle(data.title);
@@ -233,15 +230,27 @@ export default function Chat() {
     }
   }, [loaded, starter, messages.length, send]);
 
-  const remove = async () => {
-    const ok = await confirm('Delete this conversation?', 'It will be removed for good.');
-    if (!ok) return;
+  /** Starts a fresh chat in place of this one (this one stays in history). An empty chat is already new. */
+  const newChat = async () => {
+    setHistoryOpen(false);
+    if (loaded && messages.length === 0 && !sending) {
+      inputRef.current?.focus();
+      return;
+    }
+    if (creating) return;
+    setCreating(true);
     try {
-      await api(`/conversations/${id}`, { method: 'DELETE' });
-      router.back();
+      const { conversation } = await api<{ conversation: { id: string } }>('/conversations', { method: 'POST' });
+      router.replace({ pathname: '/chat/[id]', params: { id: conversation.id } });
     } catch (e) {
       setError(errorMessage(e));
+      setCreating(false);
     }
+  };
+
+  const openChat = (other: string) => {
+    setHistoryOpen(false);
+    if (other !== id) router.replace({ pathname: '/chat/[id]', params: { id: other } });
   };
 
   const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => {
@@ -282,13 +291,8 @@ export default function Chat() {
           title={title ?? 'Luma'}
           right={
             <Row gap={space.xs}>
-              <IconButton
-                icon={solVoice ? 'volume-2' : 'volume-x'}
-                label={solVoice ? 'Luma speaks replies. Tap to read only.' : 'Luma replies in text. Tap to hear Luma.'}
-                tone="clear"
-                onPress={() => void setSolVoice(!solVoice)}
-              />
-              {loaded && messages.length > 0 && <IconButton icon="trash-2" label="Delete conversation" tone="clear" onPress={remove} />}
+              <IconButton icon="plus" label="New chat" tone="clear" onPress={() => void newChat()} />
+              <IconButton icon="clock" label="Chat history" tone="clear" onPress={() => setHistoryOpen(true)} />
             </Row>
           }
         />
@@ -337,10 +341,8 @@ export default function Chat() {
         <Row gap={space.sm} style={[{ backgroundColor: c.surface, borderRadius: radius.xl, paddingLeft: space.lg, paddingRight: 6, paddingVertical: 6, alignItems: 'flex-end' }, shadow(c, 2)]}>
           <TextInput
             value={input}
-            onChangeText={(v) => {
-              stopSpeaking();
-              setInput(v);
-            }}
+            ref={inputRef}
+            onChangeText={setInput}
             placeholder="Message Luma…"
             placeholderTextColor={c.inkFaint}
             multiline
@@ -350,16 +352,20 @@ export default function Chat() {
             submitBehavior={Platform.OS === 'web' ? 'submit' : undefined}
             accessibilityLabel="Message Luma"
           />
-          <MicButton
-            size={42}
-            onListeningChange={(on) => {
-              if (on) dictationBase.current = input.trim() ? `${input.trim()} ` : '';
-            }}
-            onText={(t) => setInput(`${dictationBase.current}${t}`.slice(0, 4000))}
-          />
           <IconButton icon="arrow-up" label="Send" tone="primary" size={42} onPress={() => send(input)} />
         </Row>
       </View>
+      <ChatHistorySheet
+        visible={historyOpen}
+        currentId={id}
+        onClose={() => setHistoryOpen(false)}
+        onOpen={openChat}
+        onNew={() => void newChat()}
+        onDeletedCurrent={() => {
+          setHistoryOpen(false);
+          router.back();
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -18,7 +18,7 @@ import { space, useTheme } from '@/theme';
 export const TIPS = {
   practices: { line: 'This is your calm toolbox. When things feel heavy, a two-minute breather is a lovely place to start.', mood: 'calm' },
   journey: { line: 'This is where I grow. Every check-in and slow breath helps me bloom. There is no rush at all.', mood: 'happy' },
-  sol: { line: 'This is where you and Luma talk. Say anything, big or small. Luma listens and remembers what matters.', mood: 'listening' },
+  sol: { line: 'This is where you and Luma chat. Write anything, big or small. Luma listens and remembers what matters.', mood: 'listening' },
   breathe: { line: 'Just follow the circle. Breathe in as it grows, and out as it softens. Nothing else to do.', mood: 'calm' },
   grounding: { line: 'Look around slowly. Tap once for each thing you notice. Take all the time you need.', mood: 'calm' },
   journal: { line: 'There are no right or wrong words here. Even one line is enough.', mood: 'listening' },
