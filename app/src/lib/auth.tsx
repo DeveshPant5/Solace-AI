@@ -121,6 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await finishAuth(r.token, r.user);
       },
       async signOut() {
+        // Ends the session on the server too, so a copied token stops working. Offline is fine: sign out locally anyway.
+        await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
         const { cancelAllReminders } = await import('./notifications');
         await cancelAllReminders();
         (await import('./pipGrowth')).resetPipLevel();
