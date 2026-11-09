@@ -11,6 +11,7 @@ import { Sol } from '@/components/Sol';
 import { Button, Header, Pill, ProgressBar, Row, T, Tappable } from '@/components/ui';
 import { GROUNDING_STEPS } from '@/content/wellness';
 import { api } from '@/lib/api';
+import { refreshTodaysTasks } from '@/lib/notifications';
 import { haptic } from '@/lib/haptics';
 import { radius, space, useTheme } from '@/theme';
 
@@ -35,6 +36,7 @@ export default function Grounding() {
     let xp = 0;
     try {
       xp = (await api<{ xp: number }>('/activities', { body: { kind: 'grounding' } })).xp;
+      void refreshTodaysTasks();
     } catch {
       // offline: skip XP
     }

@@ -9,6 +9,7 @@ import { Sol } from '@/components/Sol';
 import { Button, Card, ErrorNote, Header, Pill, Row, Screen, T, Tappable } from '@/components/ui';
 import { JOURNAL_PROMPTS } from '@/content/wellness';
 import { api, errorMessage } from '@/lib/api';
+import { refreshTodaysTasks } from '@/lib/notifications';
 import { haptic } from '@/lib/haptics';
 import { radius, space, type, useTheme } from '@/theme';
 
@@ -31,6 +32,7 @@ export default function NewJournalEntry() {
     setError(null);
     try {
       const r = await api<{ xp: number }>('/journal', { body: { prompt: usePrompt ? prompt : undefined, content: text.trim() } });
+      void refreshTodaysTasks();
       haptic.success();
       setSaved({ xp: r.xp });
     } catch (e) {

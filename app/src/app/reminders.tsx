@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, Platform, Switch, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -202,6 +203,8 @@ export default function Reminders() {
           Tip: you can also ask Sol to remind you of something.
         </T>
       </Card>
+
+      <Button title="Plan daily tasks" kind="secondary" icon="sunrise" style={{ marginTop: space.lg }} onPress={() => router.push('/tasks')} />
 
       {Platform.OS !== 'web' && permission === 'granted' && (
         <Button

@@ -7,15 +7,20 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityCard } from '@/components/ActivityCard';
+import { HandIconTile } from '@/components/HandIcon';
 import { Pip } from '@/components/Pip';
 import { PipTour } from '@/components/PipTour';
+import { TaskRow } from '@/components/TaskBits';
 import { moodToExpression, Sol } from '@/components/Sol';
 import { Card, ErrorNote, IconBadge, Pill, ProgressBar, Row, SectionTitle, T, Tappable, type IconName } from '@/components/ui';
 import { api } from '@/lib/api';
 import { haptic } from '@/lib/haptics';
+import { skipTodaysTaskReminders } from '@/lib/notifications';
 import { setPipLevel, usePipStage } from '@/lib/pipGrowth';
-import type { DailyCard, HomeData } from '@/lib/types';
+import { taskHref } from '@/lib/tasks';
+import type { DailyCard, HomeData, TasksData } from '@/lib/types';
 import { useApi } from '@/lib/useApi';
+import { useTaskToggle } from '@/lib/useTaskToggle';
 import { accent, daylight, MOODS, radius, shadow, space, useTheme, type Accent } from '@/theme';
 
 function greeting() {
@@ -41,6 +46,15 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [daily, setDaily] = useState<DailyCard | null>(null);
   const pipStage = usePipStage();
+  const tasks = useApi<TasksData>('/tasks');
+  const { toggle } = useTaskToggle(tasks.setData);
+  const todayTasks = tasks.data?.tasks.filter((t) => t.dueToday) ?? [];
+
+  // A practice done elsewhere ticks its task; today's reminder for it can go.
+  useEffect(() => {
+    const done = tasks.data?.tasks.filter((t) => t.doneToday).map((t) => t.id) ?? [];
+    void skipTodaysTaskReminders(done);
+  }, [tasks.data]);
 
   useEffect(() => {
     if (data?.progress.level) setPipLevel(data.progress.level);
@@ -60,7 +74,7 @@ export default function Home() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await reload();
+    await Promise.all([reload(), tasks.reload()]);
     setRefreshing(false);
   };
 
@@ -202,6 +216,35 @@ export default function Home() {
               </Row>
               {daily.activity !== 'none' && <ActivityCard activity={daily.activity} compact />}
             </Card>
+          </Animated.View>
+        )}
+
+        {/* Today's plan: the daily tasks due today */}
+        {tasks.data && (
+          <Animated.View entering={FadeInDown.delay(180).duration(500)}>
+            {todayTasks.length > 0 ? (
+              <>
+                <SectionTitle title="Today’s plan" action="All tasks" onAction={() => router.push('/tasks')} />
+                <Card style={{ paddingVertical: space.sm }}>
+                  {todayTasks.map((t) => (
+                    <TaskRow key={t.id} task={t} showDays={false} onPress={() => router.push(taskHref(t))} onToggle={() => toggle(t)} />
+                  ))}
+                </Card>
+              </>
+            ) : tasks.data.tasks.length === 0 ? (
+              <>
+                <SectionTitle title="Today’s plan" />
+                <Card onPress={() => router.push('/tasks/edit')} style={{ paddingVertical: space.md }}>
+                  <Row gap={space.md}>
+                    <HandIconTile name="sunrise" size={42} bg={c.sageSoft} fg={c.sage} />
+                    <T variant="bodyStrong" style={{ flex: 1 }}>
+                      Plan a daily task
+                    </T>
+                    <Feather name="chevron-right" size={18} color={c.inkFaint} />
+                  </Row>
+                </Card>
+              </>
+            ) : null}
           </Animated.View>
         )}
 

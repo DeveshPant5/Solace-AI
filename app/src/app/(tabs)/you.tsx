@@ -67,6 +67,7 @@ export default function You() {
 
       <SectionTitle title="Your space" />
       <Card style={{ paddingVertical: space.sm }}>
+        <MenuRow icon="sunrise" title="Daily tasks" href="/tasks" bg={c.sageSoft} fg={c.sage} />
         <MenuRow icon="bell" title="Reminders" href="/reminders" bg={c.butterSoft} fg={c.butter} />
         <MenuRow
           icon="bookmark"

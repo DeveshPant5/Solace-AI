@@ -8,10 +8,11 @@ import Svg, { Path } from 'react-native-svg';
 
 import { PipTip } from '@/components/PipTip';
 import { Sol } from '@/components/Sol';
-import { Button, Chip, Header, Pill, Row, T } from '@/components/ui';
+import { Button, Chip, Header, Pill, Row, T, Tappable } from '@/components/ui';
 import { BREATH_PATTERNS, type BreathPattern } from '@/content/wellness';
 import { api } from '@/lib/api';
 import { haptic } from '@/lib/haptics';
+import { refreshTodaysTasks } from '@/lib/notifications';
 import { fonts, radius, space, useTheme } from '@/theme';
 
 export default function Breathe() {
@@ -65,6 +66,7 @@ export default function Breathe() {
     try {
       const r = await api<{ xp: number }>('/activities', { body: { kind: 'breathing', meta: { pattern: pattern.id, seconds: elapsed.current } } });
       xp = r.xp;
+      void refreshTodaysTasks();
     } catch {
       // Progress will simply not be recorded if offline.
     }
@@ -149,6 +151,21 @@ export default function Breathe() {
           <View style={{ gap: space.sm }}>
             <Button title="Done" onPress={() => router.back()} />
             <Button title="Go again" kind="ghost" onPress={() => reset()} />
+            <Tappable
+              accessibilityRole="button"
+              onPress={() => {
+                const now = new Date();
+                router.replace({
+                  pathname: '/tasks/edit',
+                  params: { activity: `breathe_${pattern.id}`, hour: String(now.getHours()), minute: String(Math.floor(now.getMinutes() / 5) * 5) },
+                });
+              }}
+              style={{ alignSelf: 'center', paddingVertical: space.sm }}
+            >
+              <T variant="small" color={c.inkSoft} style={{ textDecorationLine: 'underline' }}>
+                Make it a daily habit
+              </T>
+            </Tappable>
           </View>
         ) : running ? (
           <View style={{ gap: space.sm }}>

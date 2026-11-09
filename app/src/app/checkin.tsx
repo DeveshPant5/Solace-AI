@@ -9,6 +9,7 @@ import { moodToExpression, Sol } from '@/components/Sol';
 import { Button, Card, Chip, ErrorNote, Header, inputStyle, Pill, Row, Screen, T, Tappable } from '@/components/ui';
 import { EMOTIONS } from '@/content/wellness';
 import { api, errorMessage } from '@/lib/api';
+import { refreshTodaysTasks } from '@/lib/notifications';
 import { haptic } from '@/lib/haptics';
 import type { ActivityId } from '@/lib/types';
 import { accent, MOODS, radius, space, useTheme } from '@/theme';
@@ -38,6 +39,7 @@ export default function Checkin() {
     setError(null);
     try {
       const r = await api<CheckinResponse>('/moods', { body: { mood, emotions, note: note.trim() || undefined } });
+      void refreshTodaysTasks();
       haptic.success();
       setResult(r);
     } catch (e) {
