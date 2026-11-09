@@ -1,6 +1,6 @@
 # Solace AI: project handoff
 
-Everything a new session needs to pick up this project. Last updated **2026-11-09** (round 2: warm light UI, voice, AI onboarding; round 3: Pip replaces Ray, screen tips, calm-by-design; round 4: security audit and backend hardening, see section 6 "Security"; round 5: Sol moved to Groq's free open models and the backend made deployable on Render). Read this first, then `README.md` for setup and feature details.
+Everything a new session needs to pick up this project. Last updated **2026-11-09** (round 2: warm light UI, voice, AI onboarding; round 3: Pip replaces Ray, screen tips, calm-by-design; round 4: security audit and backend hardening, see section 6 "Security"; round 5: Luma moved to Groq's free open models and the backend made deployable on Render). Read this first, then `README.md` for setup and feature details.
 
 ---
 
@@ -44,13 +44,13 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - Home, then mood check-in and the result
   - Practices, the anxiety assessment and its results
   - box breathing, ticking off a guide step, and Journey (with seeded data)
-  - the Sol tab, plus chat's "not connected" error
+  - the Luma tab, plus chat's "not connected" error
   - Memory, Reminders, You, Help
 - **Round 2 (2026-11-05 afternoon), walked through on web in Chrome:**
   - the new warm light theme ("Hearth") on Home, onboarding and Settings, plus dark mode as an option (Settings → Appearance: Light / Dark / Match phone; Light is the default)
   - the onboarding guide (Ray then, Pip now): the welcome screen with the voice opt-in, then 5 onboarding steps (name, "what's on your mind", focus, check-in time, tone), then sign-up with the name prefilled
   - the guide's offline help: rephrasings after a pause in typing, focus areas pre-picked with a badge, and tone previews
-  - the first-run tour on Home: the hand-off to Sol, then 5 stops, skippable
+  - the first-run tour on Home: the hand-off to Luma, then 5 stops, skippable
 - **Round 3, also walked through on web:**
   - all 11 growth stages, drawn on a temporary gallery page that has since been removed
   - the welcome screen with the bubble above Pip, the typewriter and Sign in under the main button
@@ -59,8 +59,8 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - no console errors
   - the welcome screen: `components/WindowScene.tsx` puts Pip on a windowsill in front of a window whose sky follows the time of day (rising sun, high sun and clouds, sunset, moon and stars), with curtains and a rod. The window fills the space between the wordmark and the buttons; Pip's line sits at the top and Pip stands on the sill.
   - the browser's own voice speaking (fallback path) and the mic button rendering in Chrome
-- **Release APK** (2026-11-09): `builds/Solace.apk` (43 MB, arm64-v8a, package `com.solace.companion`), built against the deployed API **https://solace-api-zy7a.onrender.com**. Checked inside the APK: the Render address is in the bundle, the old Wi-Fi address is gone, `usesCleartextTraffic=false`, no keys. The earlier Wi-Fi build (hard-wired to `http://192.168.29.213:4000`, 2026-11-05, before Pip) was removed from `builds/`: installing it by mistake shows Sol instead of Pip and hangs at sign-up, because it calls the laptop. If a phone still has it, uninstall it before installing the new APK.
-- **Production check (2026-11-09)** on the deployed API with a throwaway account (deleted after): Pip's help, check-in reply, chat with an activity card and a reminder, a crisis message (help card at once, Sol asks if they're safe, no phone numbers), and one ElevenLabs clip all worked; `/health/ip` shows the caller's real IP with `TRUST_PROXY=3`.
+- **Release APK** (2026-11-09): `builds/Solace.apk` (43 MB, arm64-v8a, package `com.solace.companion`), built against the deployed API **https://solace-api-zy7a.onrender.com**. Checked inside the APK: the Render address is in the bundle, the old Wi-Fi address is gone, `usesCleartextTraffic=false`, no keys. The earlier Wi-Fi build (hard-wired to `http://192.168.29.213:4000`, 2026-11-05, before Pip) was removed from `builds/`: installing it by mistake shows Luma instead of Pip and hangs at sign-up, because it calls the laptop. If a phone still has it, uninstall it before installing the new APK.
+- **Production check (2026-11-09)** on the deployed API with a throwaway account (deleted after): Pip's help, check-in reply, chat with an activity card and a reminder, a crisis message (help card at once, Luma asks if they're safe, no phone numbers), and one ElevenLabs clip all worked; `/health/ip` shows the caller's real IP with `TRUST_PROXY=3`.
 
 - **Round 4 (2026-11-09), security hardening:**
   - a multi-agent audit found 68 issues; each was checked against the code and fixed or consciously accepted (section 6, "Security")
@@ -76,19 +76,22 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - **live with the user's Groq key** (local backend): Pip's help, check-in replies, chat, activity cards and the reminder tool all work on real Groq models in about a second each. At a human pace (20 s between messages) everything stays on `gpt-oss-120b`; back-to-back messages trip the 8K tokens-a-minute limit, which the fallback chain now absorbs
   - this key can use only `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b` (plus guard/audio models); the Llama models in Groq's docs return 404 for it. Fallbacks: chat 120b → qwen → 20b; JSON 20b → qwen. A retired model (404) is skipped with a log line
   - Pip's voice on free credits only (user's request): before a new clip the server reads the ElevenLabs plan balance (`GET /v1/user/subscription`, at most hourly, counting locally in between) and stops 200 characters before the limit; a `quota_exceeded` / 402 / bad-key answer stops it too. While paused, `/health` says `voice:false` and new clips answer 503 `voice_off`, so the app uses the phone's voice; cached clips keep playing; it resumes at the monthly reset. The app re-checks `/health` after a failed natural-voice line (needs the APK rebuild). Covered by `test/voice.test.ts` against a stand-in for ElevenLabs (`ELEVENLABS_BASE_URL`, `VOICE_CACHE_DIR`)
-  - safety: an unsafe-sounding message emits the keyword signal at once, and gets a caring reply plus the `help_now` card even when the AI is off, resting, restarting or rate limited (`sendSafetyReply` in `routes/conversations.ts`). Sol's persona now says not to quote phone numbers (Qwen once told an Indian user to text 988)
+  - safety: an unsafe-sounding message emits the keyword signal at once, and gets a caring reply plus the `help_now` card even when the AI is off, resting, restarting or rate limited (`sendSafetyReply` in `routes/conversations.ts`). Luma's persona now says not to quote phone numbers (Qwen once told an Indian user to text 988)
 
 - **Round 6 (2026-11-09), feedback from the phone:**
-  - Sol's replies on Groq: `gpt-oss-120b` sometimes writes a tool call into the reply as JSON, sends `null` for optional tool fields (Groq then rejects the call with 400 `tool_use_failed`), or returns an empty reply. Fixed: a streaming filter in `ai/companion.ts` (`JsonInTextFilter`) holds back JSON objects and turns written-out tool calls into real cards; optional tool fields accept `null`; a rejected tool call is retried once as a plain reply (`tool_choice: "none"`); an empty reply is retried once. Checked live: three tries of the user's screenshot message all gave clean replies.
-  - Sol reads its replies aloud with the phone's voice (free; `speakAsSol` in `app/src/lib/voice.ts`), with a speaker toggle in the chat header (remembered in `solace.solVoice`, on by default). The chat box has the mic (long dictation).
-  - Remembering: Sol's context now includes the last 4 things the person said in other conversations (memory on only), and the persona asks Sol to save people, events and goals the same turn.
+  - Luma's replies on Groq: `gpt-oss-120b` sometimes writes a tool call into the reply as JSON, sends `null` for optional tool fields (Groq then rejects the call with 400 `tool_use_failed`), or returns an empty reply. Fixed: a streaming filter in `ai/companion.ts` (`JsonInTextFilter`) holds back JSON objects and turns written-out tool calls into real cards; optional tool fields accept `null`; a rejected tool call is retried once as a plain reply (`tool_choice: "none"`); an empty reply is retried once. Checked live: three tries of the user's screenshot message all gave clean replies.
+  - Luma reads its replies aloud with the phone's voice (free; `speakAsSol` in `app/src/lib/voice.ts`), with a speaker toggle in the chat header (remembered in `solace.solVoice`, on by default). The chat box has the mic (long dictation).
+  - Remembering: Luma's context now includes the last 4 things the person said in other conversations (memory on only), and the persona asks Luma to save people, events and goals the same turn.
   - The first-run tour and screen tips are for new accounts only: signing in marks them seen on that device (`markTourSeen` in `PipTour.tsx`, called from `signIn`), and the tour only starts by itself for accounts created within a day. "Take the tour with Pip" still replays both.
-  - Tab bar: no green box behind the active tab any more (the user found it bad UX); the active tab's icon turns green and slightly larger and its label green and bold (Figtree 700), the others stay grey. The Sol button in the middle is unchanged.
-  - Lighter screens: removed most secondary lines (Practices and Journey subtitles, check-in blurbs and XP line, quick-start and You-tab row subtitles, achievement descriptions, Journey hints); shorter Sol intro and privacy note. The Breathe & ground cards size to their content and share one height (152 px, no empty middle).
+  - Tab bar: no green box behind the active tab any more (the user found it bad UX); the active tab's icon turns green and slightly larger and its label green and bold (Figtree 700), the others stay grey. The Luma button in the middle is unchanged.
+  - Lighter screens: removed most secondary lines (Practices and Journey subtitles, check-in blurbs and XP line, quick-start and You-tab row subtitles, achievement descriptions, Journey hints); shorter Luma intro and privacy note. The Breathe & ground cards size to their content and share one height (152 px, no empty middle).
   - The AI-companion disclaimer under the chat box is gone (the user asked).
-  - Breathing screen: the sentence inside the circle ("In for 5, out for 5…") looked cramped. The circle now shows only Sol until you begin, and below it sits a small strip of counts built from the pattern's `phases` (`5 in ~ 5 out`, hand-drawn waves between them) with a short italic line from the pattern's `feel` field. While running, the current step is sage and the others fade; "Round x of y" sits under it. Box breathing's four steps fit a 360 dp phone (304 px).
-- **Profile card (2026-11-09):** the You tab's header is now a warm card: Sol, a time-of-day greeting, name and email, a pencil squiggle, three gentle numbers (days together, calm moments = check-ins + breathing + grounding + journal, Pip's garden level from `/progress`), the person's focus areas as "Tending to" chips, and "With Solace since". The onboarding intention is left off on purpose (free text, can be personal). No streak there, so it never shows a zero.
-- **Easter egg: Sol's wardrobe (2026-11-09, the user's idea).** Hold **Settings** on the You tab for 5 seconds (a short tap still opens Settings; while held the icon slowly turns and a soft tick comes each second) to open `/sol-studio`. People can change Sol's fruit (Sol, apple, orange, pear, strawberry, lemon, blueberry, peach), eyes (as Sol feels, bright, sparkly, smiling, sleepy, grumpy, worried, wink, hearts, stars), mouth (11), cheeks (rosy, freckles, none) and glasses (none, reading, sunnies), or tap "Surprise me" / "Classic Sol". Changes show on every Sol straight away and are kept on the phone per account (`solace.solLook.<userId>`, `src/lib/solLook.ts`); not on the server. "As Sol feels" eyes and mouth follow Sol's mood as before. Mood pickers and tone pickers pass `moodFace` so their faces still show the mood they stand for (only fruit, cheeks and glasses change there). Checked on the web preview, including a real 5.6 s hold.
+  - Breathing screen: the sentence inside the circle ("In for 5, out for 5…") looked cramped. The circle now shows only Luma until you begin, and below it sits a small strip of counts built from the pattern's `phases` (`5 in ~ 5 out`, hand-drawn waves between them) with a short italic line from the pattern's `feel` field. While running, the current step is sage and the others fade; "Round x of y" sits under it. Box breathing's four steps fit a 360 dp phone (304 px).
+- **Renamed: Sol is now Luma (2026-11-09, the user chose it).** Every visible mention changed, including the persona prompt ("You are Luma"), the tab label, Pip's lines and onboarding. Code names keep the old word on purpose: `components/Sol.tsx`, `<Sol>`, `SolMood`, `lib/solLook.ts`, `speakAsSol`, the `/sol` tab route and storage keys like `solace.solVoice` and `solace.solLook.*`.
+- **New app icon (2026-11-09):** the launcher icon is no longer the character's face: a sage sprout in front of a warm rising sun on cream. Sources in `app/assets/source/*.svg` (rendered to PNG with headless Chrome); adaptive foreground/background, a one-colour themed version (the sun ring breaks around the sprout) and the native splash all match. The in-app splash and the centre tab button still show Luma.
+- **Get support:** only "United States" (988, 911) and "Anywhere in the world" (Find A Helpline) now; India and UK & Ireland were removed at the user's request (`US_HELPLINES` in `content/wellness.ts`).
+- **Profile card (2026-11-09):** the You tab's header is now a warm card: Luma, a time-of-day greeting, name and email, a pencil squiggle, three gentle numbers (days together, calm moments = check-ins + breathing + grounding + journal, Pip's garden level from `/progress`), the person's focus areas as "Tending to" chips, and "With Solace since". The onboarding intention is left off on purpose (free text, can be personal). No streak there, so it never shows a zero.
+- **Easter egg: Luma's wardrobe (2026-11-09, the user's idea).** Hold **Settings** on the You tab for 5 seconds (a short tap still opens Settings; while held the icon slowly turns and a soft tick comes each second) to open `/sol-studio`. People can change Luma's fruit (Luma, apple, orange, pear, strawberry, lemon, blueberry, peach), eyes (as Luma feels, bright, sparkly, smiling, sleepy, grumpy, worried, wink, hearts, stars), mouth (11), cheeks (rosy, freckles, none) and glasses (none, reading, sunnies), or tap "Surprise me" / "Classic Luma". Changes show on every Luma straight away and are kept on the phone per account (`solace.solLook.<userId>`, `src/lib/solLook.ts`); not on the server. "As Luma feels" eyes and mouth follow Luma's mood as before. Mood pickers and tone pickers pass `moodFace` so their faces still show the mood they stand for (only fruit, cheeks and glasses change there). Checked on the web preview, including a real 5.6 s hold.
 - **Daily tasks (2026-11-09, the user's idea):** people plan things to do each day at a set time, and Solace reminds them.
   - A task is one of the app's practices (calm/box/4-7-8 breathing, grounding, journal, check-in) or their own (yoga, stretching, a walk, meditation, drink water, read, or anything typed), at a time, on chosen days (bitmask, bit 0 = Sunday), with an optional timer (own tasks only) and a reminder switch.
   - Backend: `migrations/003_tasks.sql` (`tasks`, `task_completions`), `routes/tasks.ts` (`GET|POST /tasks`, `PATCH|DELETE /tasks/:id`, `POST /tasks/:id/done` with `{done:false}` to untick). A practice task counts as done when that practice was recorded today (`breathing` with the matching `meta.pattern`, `grounding`, `journal`, `mood_checkin`), so it can't be unticked (`doneVia: 'practice'`). Ticking your own task earns 10 XP (first 5 a day); unticking deletes that XP row. Max 20 tasks. 7 tests in `api.test.ts`.
@@ -144,7 +147,7 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
    - optional: recreate the local database container bound to localhost only (`podman rm -f solace-db && npm run db:up`; the data volume is kept). The running container still listens on all interfaces because it was created before round 4.
 4. Demo video. `npm run seed:demo` fills the demo account with two weeks of history. Suggested order:
    - splash → onboarding → sign-up → home check-in
-   - chat with Sol (activity card, memory, reminder) → breathing → a check-in with next steps
+   - chat with Luma (activity card, memory, reminder) → breathing → a check-in with next steps
    - journey → reminders → memory controls
 5. Nice to have:
    - check light mode
@@ -169,9 +172,9 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - voice: soft and slightly slow (ElevenLabs stability 0.6, style 0.05, speed 0.92; device fallback pitch 1.08, rate 0.9)
   - words: gentle, no urgency, few or no exclamation marks
   - interruptions: inline and dismissible, shown once, never blocking the main action
-- **Guide mascot: Pip** (round 3, chosen by the user from three drawn concepts: Pip, a mango "Aamu", and a full-body Ray). It **replaced Ray**, Sol's little brother from round 2.
+- **Guide mascot: Pip** (round 3, chosen by the user from three drawn concepts: Pip, a mango "Aamu", and a full-body Ray). It **replaced Ray**, Luma's little brother from round 2.
   - **Look:** a little walking terracotta flower pot with a face on the pot, mitten hands, little brown shoes, and a sprout on top. The user originally asked for a fruit with hands and feet, then said it didn't have to be a fruit.
-  - **Story:** the seedling Sol planted for you.
+  - **Story:** the seedling Luma planted for you.
   - **Growth (user's request, round 3):** the plant grows at every onboarding step and becomes a tree once you're in the app. It uses 11 stages:
     - onboarding: welcome 0 (shoot); the five personalize steps 1–5 (sprout, seedling, bud, flower, sapling); sign-up 6 (young tree)
     - entering the app: the tour's first stop grows it into a tree
@@ -191,10 +194,10 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - **Headings:** Fraunces 500/600; Nunito stays for UI text. DM Serif Display was removed.
   - **Window light:** a time-of-day gradient at the top of Home and the welcome screen (`daylight()`)
   - **Dark mode** (the user wanted to keep it) is "Evening in", warm browns. It's opt-in from Settings, and Light is always the default.
-- **Mascot and companion:** **Sol**, an original SVG "glow being" with a sprout, with 7 expressions and tints that follow mood. App name: **Solace**.
+- **Mascot and companion:** **Luma**, an original SVG "glow being" with a sprout, with 7 expressions and tints that follow mood. App name: **Solace**.
 - **Visual design (round 1, replaced):** linen/lavender with a purple primary and DM Serif Display. See "Look (round 2)" above.
 - **Wording:** Claude wrote all user-facing text. The user's Trill-only rule "never add text without asking" does not apply here. The user may still want to review the wording.
-- **Help lines:** India Tele-MANAS 14416 and emergency 112; US 988 / 911; UK & Ireland Samaritans 116 123 / 999; findahelpline.com for everywhere else. The local region is picked from the device's time zone.
+- **Help lines:** United States 988 / 911, and findahelpline.com for anywhere in the world (India and UK & Ireland were removed on 2026-11-09 at the user's request).
 - **Wellbeing checks:** mood and anxiety use PHQ-4 items extended with PHQ-9 / GAD-7 items (all free to use). The self-kindness check is our own, non-clinical. The app always says "not a diagnosis".
 - **Git (2026-11-05):** the root folder is now the git repo, pushed to **https://github.com/DeveshPant5/Solace-AI**. The repo is **public** and the branch is `main`. The user asked for exactly 25 commits that build the project up in logical steps.
   - Commit and push only when the user asks; never add co-author or AI trailers; use the user's git identity (DeveshPant5).
@@ -241,7 +244,7 @@ API_URL=http://<wifi-ip>:4000 npm run build:apk       # → ../builds/Solace.apk
 | `src/ai/client.ts` | The Groq or Anthropic client; `structured()` (Groq: strict `json_schema` from the zod schema on the fast model, validated with zod; Claude: `messages.parse` + `zodOutputFormat`); returns null on a refusal or error. `withGroqRetry`, `aiErrorKind` ("busy" / "daily_limit"), `logAiError` |
 | `src/ai/chatProviders.ts` | One chat session per service behind `step()` / `addToolResults()`: Claude (beta messages stream, fallbacks, persona cached) and Groq (streaming chat completions, OpenAI-style tool calls). `chatProfile` sizes history and memories per service. |
 | `src/ai/context.ts` | `buildUserContext(user)` builds a text block: name, local time, tone, focus areas, progress, last 6 moods, latest results, and, if memory is on, memories, 2 journal entries and recent chat titles |
-| `src/ai/companion.ts` | Sol's persona, 3 tools, and the streaming loop |
+| `src/ai/companion.ts` | Luma's persona, 3 tools, and the streaming loop |
 | `src/ai/analysis.ts` | Per-message signal (mood/emotions/risk), title, daily card, assessment moves, check-in reply, weekly reflection |
 | `src/seed-demo.ts` | Demo data |
 | `src/routes/onboarding.ts`, `src/ai/onboarding.ts` | Public `POST /onboarding/assist`: Pip's rephrasings (persona: soft, unhurried, calming), focus picks and tone previews. Structured output, offline fallback, concern detection (AI flag OR keywords), and output clean-up for speech (no emoji or dashes, word caps). Stateless; logs no text. |
@@ -311,7 +314,7 @@ What changed, by area. Each item maps to a finding from the audit.
 **Folders:**
 - `src/app/`: routes
   - `_layout.tsx`: fonts, `AuthProvider`, Stack with `Stack.Protected` + `redirectTo`, `SplashIntro`, and `PhoneFrame` (a 440 px column on web)
-  - `(tabs)/`: index (Home), practices, sol, journey, you. The custom tab bar comes from `expo-router/js-tabs` and has Sol in the centre.
+  - `(tabs)/`: index (Home), practices, sol, journey, you. The custom tab bar comes from `expo-router/js-tabs` and has Luma in the centre.
   - onboarding (round 2):
     - `welcome` is Pip's intro and the voice opt-in
     - `personalize` has 5 steps: name with mic, "what's on your mind" with mic and Pip's help, focus with Pip's picks, check-in time, and tone with previews
@@ -325,7 +328,7 @@ What changed, by area. Each item maps to a finding from the audit.
     - `Pip.tsx` (round 3): stages 0–10, a viewBox that gets taller as the plant grows (`TOP`), and the grow crossfade. It's an SVG in three layers (body, plant, right arm), so the plant sways around its base and the arm waves from the shoulder (via `transformOrigin`). It has a 5 s breathing sway, slow blinks, 6 moods (happy, calm, curious, listening, cheering, thinking), a talking mouth, and `pipStage()`.
     - `PipGuide.tsx`: Pip plus a speech bubble. The `stack` layout puts the bubble above Pip with a tail (welcome, the personalize steps and sign-up), and the line types out with a calm typewriter effect. It speaks each line once, only while focused (`useIsFocused`), has a mute toggle, and tapping Pip replays the line. Only the Pip whose line is playing moves its mouth (`useVoice().line`).
     - `PipTour.tsx`: the first-run Home tour; it stores `solace.tour.<userId>`. `replayTour(userId)` also resets the tips; it's called from You → "Take the tour with Pip".
-    - `PipTip.tsx`: first-visit tips (`TIPS`) on Practices, Journey, the Sol tab, breathing (before starting), grounding, the journal, check-in, assessments (first question), Reminders and Memory. Each is inline, marked seen as soon as it shows (`solace.tip.<userId>.<id>`), and dismissed with "Got it".
+    - `PipTip.tsx`: first-visit tips (`TIPS`) on Practices, Journey, the Luma tab, breathing (before starting), grounding, the journal, check-in, assessments (first question), Reminders and Memory. Each is inline, marked seen as soon as it shows (`solace.tip.<userId>.<id>`), and dismissed with "Got it".
     - `lib/pipGrowth.ts`: the level store. Home and Journey call `setPipLevel`; `usePipStage()` reads it; it's reset on sign-out and account deletion.
     - Removed: `Ray.tsx`, `RayGuide.tsx`, `RayTour.tsx`, `Garden.tsx` (Journey and Home's "Pip's garden" card now show Pip).
     - `MicButton.tsx`: tap to dictate; one active owner at a time, since recognition events are global
@@ -355,7 +358,7 @@ What changed, by area. Each item maps to a finding from the audit.
   - DAILY triggers for mood, breathing, self-care and custom reminders
   - 7 one-off DATE triggers for affirmations, each with a different text; today's uses the AI affirmation
   - daily tasks: one DATE trigger per planned day, 10 days ahead, skipping today's once done (see Status → Daily tasks)
-- It runs on sign-in and app start, and after any reminder change or a reminder Sol creates.
+- It runs on sign-in and app start, and after any reminder change or a reminder Luma creates.
 - Taps go to `data.url`: mood → `/checkin`, affirmation → `/`, breathing → `/breathe/calm`, self-care → `/practices`, custom → `/sol`.
 - Permission is requested once, automatically, after sign-in.
 
@@ -392,7 +395,7 @@ What changed, by area. Each item maps to a finding from the audit.
 
 - **Round 5 gotchas (Groq):**
   - **Groq's docs can list models a key can't use.** Check with `groq.models.list()` (the Llama models were listed in the docs but answered 404 `model_not_found`).
-  - **Free limits are per model and per minute:** about 8K tokens a minute each. One Sol turn is roughly 3 to 4K tokens, so two quick messages fill a minute; the fallback chain and the trimmed Groq prompt (12 messages, 5,000 characters, 12 memories) keep normal-paced chat working.
+  - **Free limits are per model and per minute:** about 8K tokens a minute each. One Luma turn is roughly 3 to 4K tokens, so two quick messages fill a minute; the fallback chain and the trimmed Groq prompt (12 messages, 5,000 characters, 12 memories) keep normal-paced chat working.
   - **`groq-sdk` obeys `retry-after` with no upper bound.** Once the free daily allowance is used up, Groq can answer 429 with a wait of an hour, and the SDK would sleep that long inside a request. The client is created with `maxRetries: 0`; `withGroqRetry()` retries once, only for waits of 5 seconds or less, server errors and dropped connections.
   - **Groq rejects `messages[].name`**, and `reasoning_effort` / `include_reasoning` only apply to gpt-oss (and qwen) models; `groqReasoning(model)` sends them only there.
   - **Strict JSON Schema mode** (gpt-oss, qwen) needs every property required and `additionalProperties: false`; zod's `toJSONSchema(schema, { io: "output" })` gives that. `$schema` and `default` keys are stripped. Other models fall back to `json_object` mode with the schema in the prompt.

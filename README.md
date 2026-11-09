@@ -1,6 +1,6 @@
 # Solace AI: a wellness companion
 
-Solace is a calm, personal mobile app that helps people understand their emotions, look after themselves and build healthier daily habits. Its AI companion, **Sol**, is a small glowing character who listens, remembers what matters, and connects conversations to things that actually help.
+Solace is a calm, personal mobile app that helps people understand their emotions, look after themselves and build healthier daily habits. Its AI companion, **Luma**, is a small glowing character who listens, remembers what matters, and connects conversations to things that actually help.
 
 ```
 solace AI/
@@ -14,28 +14,28 @@ solace AI/
 
 | Area | What it does |
 |---|---|
-| **Opening** | Warm sunrise splash. **Pip**, a little walking flower pot (the seedling Sol planted for you), guides onboarding with an opt-in, calm natural voice (ElevenLabs, falling back to the device voice) and a mic so people can talk instead of type. There are 5 steps: name, "what's on your mind", focus areas, check-in time, and Sol's tone. While you type, Pip quietly suggests better wording, pre-picks focus areas and previews how Sol would reply in each tone (AI, with offline fallbacks). Pip then introduces Sol with a short first-run tour of Home, and gives a one-time tip the first time you open each main screen. Pip's sprout grows with your garden level (shown on Home and Journey). |
+| **Opening** | Warm sunrise splash. **Pip**, a little walking flower pot (the seedling Luma planted for you), guides onboarding with an opt-in, calm natural voice (ElevenLabs, falling back to the device voice) and a mic so people can talk instead of type. There are 5 steps: name, "what's on your mind", focus areas, check-in time, and Luma's tone. While you type, Pip quietly suggests better wording, pre-picks focus areas and previews how Luma would reply in each tone (AI, with offline fallbacks). Pip then introduces Luma with a short first-run tour of Home, and gives a one-time tip the first time you open each main screen. Pip's sprout grows with your garden level (shown on Home and Journey). |
 | **Accounts** | Email + password sign-up/sign-in (bcrypt + JWT), token kept in the device keychain. Account deletion removes everything. |
-| **Home** | Time-aware greeting, one-tap mood check-in where Sol's face and colour follow your mood, an **AI-written daily affirmation and focus** grounded in your recent check-ins, quick actions, "pick up where you left off", and your growing garden (XP level). |
-| **Sol (AI companion)** | Streaming chat with a distinct personality and three tones (gentle / cheerful / direct). Sol knows your recent moods, check-in results, journal entries and things you've shared, and can **open activity cards** (breathing, grounding, journaling with a tailored prompt, guides…), **save memories**, and **create reminders** from inside the conversation. Every message is also read for mood and safety; crisis language brings up a support card with helplines. |
+| **Home** | Time-aware greeting, one-tap mood check-in where Luma's face and colour follow your mood, an **AI-written daily affirmation and focus** grounded in your recent check-ins, quick actions, "pick up where you left off", and your growing garden (XP level). |
+| **Luma (AI companion)** | Streaming chat with a distinct personality and three tones (gentle / cheerful / direct). Luma knows your recent moods, check-in results, journal entries and things you've shared, and can **open activity cards** (breathing, grounding, journaling with a tailored prompt, guides…), **save memories**, and **create reminders** from inside the conversation. Every message is also read for mood and safety; crisis language brings up a support card with helplines. |
 | **Chat history** | Conversations are stored, titled automatically, listed with previews, can be continued or deleted. |
 | **Practices** | Calm, box and 4-7-8 breathing with an animated circle and haptics; 5-4-3-2-1 grounding; three short wellbeing check-ins (PHQ/GAD-based mood and anxiety, plus self-kindness) with **AI-personalised next steps**; six step-by-step guides; journal with rotating prompts. |
-| **Journey** | Level + garden illustration, streaks with a week strip, 14-day mood chart, counts, achievements, and **Sol's weekly reflection** (AI) on patterns in your week. |
+| **Journey** | Level + garden illustration, streaks with a week strip, 14-day mood chart, counts, achievements, and **Luma's weekly reflection** (AI) on patterns in your week. |
 | **Reminders** | Daily mood check-in, affirmation (a different one each day), breathing and self-care reminders, plus your own. Local scheduled notifications work with the app closed, and tapping one opens the right screen. |
 | **Daily tasks** | Plan things to do each day at a set time: one of the app's practices (calm, box or 4-7-8 breathing, grounding, journal, check-in) or your own (yoga, a walk, drink water…), on chosen days, with an optional timer for your own. A gentle reminder arrives at that time and opens the practice or the timer. Today's tasks appear on Home with a tick; doing a practice in the app ticks its task by itself, and today's reminder is skipped once it's done. |
-| **Privacy** | "What Sol remembers" lets you view/delete each memory, forget everything, or turn memory off entirely. |
-| **Support** | Region-aware helplines (India: Tele-MANAS 14416; US: 988; UK & Ireland: Samaritans), Find A Helpline for everywhere else. |
+| **Privacy** | "What Luma remembers" lets you view/delete each memory, forget everything, or turn memory off entirely. |
+| **Support** | United States helplines (988 Suicide & Crisis Lifeline, 911) and Find A Helpline for anywhere in the world. |
 
 Design: soft linen/lavender palette with peach, sage, sky, butter and rose accents; DM Serif Display + Nunito; full light and dark themes; spring-based press animations, layout animations and haptic feedback throughout.
 
 ## How the AI works
 
-All AI runs on the backend. By default it uses **Groq**, which serves open models on a free tier: Sol chats on `openai/gpt-oss-120b`, and the short structured jobs run on `openai/gpt-oss-20b` (free limits are per model, so this spreads the load). Claude (Anthropic) is still supported as a paid alternative: set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
+All AI runs on the backend. By default it uses **Groq**, which serves open models on a free tier: Luma chats on `openai/gpt-oss-120b`, and the short structured jobs run on `openai/gpt-oss-20b` (free limits are per model, so this spreads the load). Claude (Anthropic) is still supported as a paid alternative: set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
 
 - **Companion chat** (`backend/src/ai/companion.ts` with one adapter per service in `ai/chatProviders.ts`): streamed with Server-Sent Events to the app. A fixed persona prompt plus a per-person context block (built fresh each request from the database, `ai/context.ts`) so memory changes take effect immediately. Three tools: `suggest_activity`, `remember`, `create_reminder`. Only the visible text of earlier turns is replayed.
 - **Structured calls** (`ai/analysis.ts`, JSON checked against a schema): per-message mood + risk signal, conversation titles, daily affirmation/focus card, assessment next steps, mood check-in reply, weekly reflection, Pip's onboarding help.
-- **Free-tier limits:** Groq's free models allow roughly 8,000 tokens a minute and 200,000 a day each. When one is used up, the request moves to the next free model (`qwen/qwen3.8-27b`, then `openai/gpt-oss-20b`), which roughly triples the allowance: plenty for a demo and a few testers chatting at a normal pace. If all are used up, chat says Sol is busy or resting and everything else falls back to offline content.
-- **Safety first:** a message that sounds like self-harm or danger shows the help card at once, and still gets a caring reply pointing to the help lines even when the AI is off, rate limited or resting. Sol never quotes phone numbers itself; the card shows the right local ones.
+- **Free-tier limits:** Groq's free models allow roughly 8,000 tokens a minute and 200,000 a day each. When one is used up, the request moves to the next free model (`qwen/qwen3.8-27b`, then `openai/gpt-oss-20b`), which roughly triples the allowance: plenty for a demo and a few testers chatting at a normal pace. If all are used up, chat says Luma is busy or resting and everything else falls back to offline content.
+- **Safety first:** a message that sounds like self-harm or danger shows the help card at once, and still gets a caring reply pointing to the help lines even when the AI is off, rate limited or resting. Luma never quotes phone numbers itself; the card shows the right local ones.
 - **Without an API key** everything except chat still works: the app falls back to built-in affirmations, suggestions and next steps.
 
 ## Run it locally
@@ -108,7 +108,7 @@ What the API does to keep people's data and the owner's API budget safe (details
 
 - [ ] Deploy the backend (see "Deploying the backend") and try a few conversations (anxious, venting, ask for a reminder, mention someone important)
 - [ ] Build the APK with `API_URL=https://<your-service>.onrender.com`, install it on a phone, and test notifications (Reminders → "Send a test notification")
-- [ ] Record the demo video: splash → onboarding → sign-up → home check-in → chat with Sol (activity card, memory, reminder) → breathing → a check-in with next steps → journey → reminders → memory controls
+- [ ] Record the demo video: splash → onboarding → sign-up → home check-in → chat with Luma (activity card, memory, reminder) → breathing → a check-in with next steps → journey → reminders → memory controls
 - [ ] Submit the APK + video in the hackathon Telegram group
 
 Solace is a wellbeing companion, not a medical device or a substitute for professional care.
