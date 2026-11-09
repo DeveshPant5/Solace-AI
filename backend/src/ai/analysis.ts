@@ -57,7 +57,8 @@ export async function generateTitle(userMessage: string, reply: string, caller: 
     caller,
   );
   const title = out?.title ? line(out.title, 60).replace(/^["']|["'.]$/g, "") : "";
-  return title || null;
+  // Sentence case, like a diary heading.
+  return title ? title[0]!.toUpperCase() + title.slice(1) : null;
 }
 
 // ---------- Daily card on the home screen ----------
