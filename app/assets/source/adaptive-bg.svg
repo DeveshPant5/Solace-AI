@@ -3,16 +3,19 @@
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#FDF6EC"/><stop offset="60%" stop-color="#F9ECDF"/><stop offset="100%" stop-color="#F3DFD0"/>
     </linearGradient>
-    <linearGradient id="sun" x1="0.3" y1="0" x2="0.7" y2="1">
-      <stop offset="0%" stop-color="#FFDDB2"/><stop offset="100%" stop-color="#FFA383"/>
+    <linearGradient id="petal" x1="300" y1="200" x2="724" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFC2A8"/><stop offset="55%" stop-color="#C9B8FF"/><stop offset="100%" stop-color="#9CCBF5"/>
+    </linearGradient>
+    <linearGradient id="disc" x1="0.2" y1="0.1" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#FFF6D6"/><stop offset="100%" stop-color="#FFD98C"/>
     </linearGradient>
     <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#9FD3A8"/><stop offset="100%" stop-color="#4F8A62"/>
+      <stop offset="0%" stop-color="#A6D9AF"/><stop offset="100%" stop-color="#5E9E72"/>
     </linearGradient>
     <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.7"/><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.75"/><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </radialGradient>
   </defs>
   <rect width="1024" height="1024" fill="url(#bg)"/>
-  <circle cx="512" cy="470" r="380" fill="url(#glow)"/>
+  <circle cx="512" cy="460" r="400" fill="url(#glow)"/>
 </svg>

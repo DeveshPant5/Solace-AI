@@ -1,15 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <!-- The sun ring stops a little short of the sprout, so the two read apart in one colour. -->
-    <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
       <rect width="1024" height="1024" fill="#FFFFFF"/>
-      <g fill="#000000" stroke="#000000" stroke-width="44" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M509 606 C450 520 340 508 286 566 C344 640 452 654 509 606 Z"/><path d="M518 520 C568 402 704 370 770 430 C716 532 600 566 518 520 Z"/><path d="M512 764 C506 680 504 600 519 524" fill="none"/>
-      </g>
+      <circle cx="512" cy="420" r="88" fill="#000000"/>
     </mask>
   </defs>
-  <circle cx="512" cy="455" r="214" fill="none" stroke="#FFFFFF" stroke-width="28" mask="url(#gap)"/>
-  <path d="M512 764 C506 680 504 600 519 524" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" fill="none"/>
-  <path d="M509 606 C450 520 340 508 286 566 C344 640 452 654 509 606 Z" fill="#FFFFFF"/>
-  <path d="M518 520 C568 402 704 370 770 430 C716 532 600 566 518 520 Z" fill="#FFFFFF"/>
+  <g transform="translate(512 512) scale(0.96) translate(-512 -512)" fill="#FFFFFF">
+    <path d="M512 540 C506 640 504 720 512 806" stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" fill="none"/>
+    <path d="M509 712 C454 640 352 630 302 684 C356 752 456 762 509 712 Z"/><path d="M515 650 C566 584 668 574 716 626 C664 692 566 702 515 650 Z"/>
+    <g mask="url(#cut)"><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(0 512 420)"/><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(45 512 420)"/><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(90 512 420)"/><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(135 512 420)"/><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(180 512 420)"/><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(225 512 420)"/><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(270 512 420)"/><ellipse cx="512" cy="279.2" rx="56.8" ry="69.2" transform="rotate(315 512 420)"/></g>
+    <circle cx="512" cy="420" r="58"/>
+  </g>
 </svg>
