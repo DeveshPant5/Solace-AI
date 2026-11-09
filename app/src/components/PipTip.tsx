@@ -38,6 +38,11 @@ export async function resetTips(userId: string) {
   await Promise.all((Object.keys(TIPS) as TipId[]).map((id) => storage.remove(`solace.tip.${userId}.${id}`)));
 }
 
+/** Mark every tip as seen (signing in to an existing account: they've been through it before). */
+export async function markTipsSeen(userId: string) {
+  await Promise.all((Object.keys(TIPS) as TipId[]).map((id) => storage.set(`solace.tip.${userId}.${id}`, 'seen')));
+}
+
 export function PipTip({ id, style }: { id: TipId; style?: StyleProp<ViewStyle> }) {
   const c = useTheme();
   const { user } = useAuth();

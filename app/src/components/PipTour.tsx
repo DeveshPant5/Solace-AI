@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ONBOARDING_LAST_STAGE, Pip, type PipMood } from '@/components/Pip';
 import { PipGuide } from '@/components/PipGuide';
-import { resetTips } from '@/components/PipTip';
+import { markTipsSeen, resetTips } from '@/components/PipTip';
 import { Sol } from '@/components/Sol';
 import { Button, Row, T, Tappable } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -40,6 +40,17 @@ const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
 };
+
+/** The tour is for new accounts: one created within this long. */
+const NEW_ACCOUNT_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Signing in to an existing account (a new phone, or after reinstalling): skip
+ * the tour and the first-visit tips. "Take the tour with Pip" still replays them.
+ */
+export async function markTourSeen(userId: string) {
+  await Promise.all([storage.set(key(userId), 'done'), markTipsSeen(userId)]);
+}
 
 /** Show the tour (and the screen tips) again, next time Home is open. */
 export async function replayTour(userId: string) {
@@ -80,7 +91,8 @@ export function PipTour() {
     const t = setTimeout(() => {
       void storage.get(key(user.id)).then((v) => {
         if (cancelled) return;
-        if (v !== 'done' || replayRequested) {
+        const isNewAccount = Date.now() - Date.parse(user.createdAt) < NEW_ACCOUNT_MS;
+        if ((v !== 'done' && isNewAccount) || replayRequested) {
           replayRequested = false;
           setI(0);
           setVisible(true);

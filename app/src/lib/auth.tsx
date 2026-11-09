@@ -102,6 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signIn(email, password) {
         const r = await api<{ token: string; user: User }>('/auth/login', { body: { email, password } });
+        // An existing account has already been shown around: no tour or first-visit tips on this device.
+        await (await import('@/components/PipTour')).markTourSeen(r.user.id).catch(() => undefined);
         await finishAuth(r.token, r.user);
       },
       async signUp(name, email, password) {
