@@ -103,32 +103,10 @@ export interface HelpLine {
   url?: string;
 }
 
-/** Support lines by country. Shown on the Help screen. */
-export const HELPLINES: { region: string; zones: string[]; lines: HelpLine[] }[] = [
-  {
-    region: 'India',
-    zones: ['Asia/Kolkata', 'Asia/Calcutta'],
-    lines: [
-      { name: 'Tele-MANAS', detail: 'Free, 24/7 mental health support from the Government of India', phone: '14416' },
-      { name: 'Emergency', detail: 'Police, ambulance, fire', phone: '112' },
-    ],
-  },
-  {
-    region: 'United States',
-    zones: ['America/'],
-    lines: [
-      { name: '988 Suicide & Crisis Lifeline', detail: 'Call or text, 24/7', phone: '988' },
-      { name: 'Emergency', detail: 'Police, ambulance, fire', phone: '911' },
-    ],
-  },
-  {
-    region: 'United Kingdom & Ireland',
-    zones: ['Europe/London', 'Europe/Dublin'],
-    lines: [
-      { name: 'Samaritans', detail: 'Free, 24/7, any time you need to talk', phone: '116123' },
-      { name: 'Emergency', detail: 'Police, ambulance, fire', phone: '999' },
-    ],
-  },
+/** Support lines shown on the Help screen: the United States, then a directory for anywhere else. */
+export const US_HELPLINES: HelpLine[] = [
+  { name: '988 Suicide & Crisis Lifeline', detail: 'Call or text, 24/7', phone: '988' },
+  { name: 'Emergency', detail: 'Police, ambulance, fire', phone: '911' },
 ];
 
 export const FIND_A_HELPLINE = {

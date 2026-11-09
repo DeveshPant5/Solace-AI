@@ -5,16 +5,8 @@ import { Linking, View } from 'react-native';
 
 import { Sol } from '@/components/Sol';
 import { Button, Card, Header, IconBadge, Row, Screen, SectionTitle, T, Tappable } from '@/components/ui';
-import { FIND_A_HELPLINE, HELPLINES, type HelpLine } from '@/content/wellness';
+import { FIND_A_HELPLINE, US_HELPLINES, type HelpLine } from '@/content/wellness';
 import { space, useTheme } from '@/theme';
-
-function deviceZone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
-  } catch {
-    return '';
-  }
-}
 
 function Line({ line }: { line: HelpLine }) {
   const c = useTheme();
@@ -40,9 +32,6 @@ function Line({ line }: { line: HelpLine }) {
 
 export default function Help() {
   const c = useTheme();
-  const zone = deviceZone();
-  const local = HELPLINES.find((r) => r.zones.some((z) => (z.endsWith('/') ? zone.startsWith(z) : zone === z)));
-  const others = HELPLINES.filter((r) => r !== local);
 
   return (
     <Screen>
@@ -57,32 +46,15 @@ export default function Help() {
         </T>
       </View>
 
-      {local && (
-        <>
-          <SectionTitle title={`In ${local.region}`} />
-          <View style={{ gap: space.sm }}>
-            {local.lines.map((l) => (
-              <Line key={l.name} line={l} />
-            ))}
-          </View>
-        </>
-      )}
+      <SectionTitle title="United States" />
+      <View style={{ gap: space.sm }}>
+        {US_HELPLINES.map((l) => (
+          <Line key={l.name} line={l} />
+        ))}
+      </View>
 
       <SectionTitle title="Anywhere in the world" />
       <Line line={FIND_A_HELPLINE} />
-
-      {others.map((region) => (
-        <View key={region.region}>
-          <T variant="subheading" style={{ marginTop: space.xl, marginBottom: space.sm }}>
-            {region.region}
-          </T>
-          <View style={{ gap: space.sm }}>
-            {region.lines.map((l) => (
-              <Line key={l.name} line={l} />
-            ))}
-          </View>
-        </View>
-      ))}
 
       <SectionTitle title="Right now, you could" />
       <View style={{ gap: space.sm }}>
