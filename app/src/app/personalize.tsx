@@ -351,7 +351,7 @@ export default function Personalize() {
                   style={{ borderWidth: 1.5, borderColor: active ? c.primary : 'transparent', backgroundColor: active ? c.primarySoft : c.surface }}
                 >
                   <Row gap={space.md} style={{ alignItems: 'flex-start' }}>
-                    <Sol size={52} mood={t.mood} animated={active} />
+                    <Sol size={52} mood={t.mood} animated={active} moodFace />
                     <View style={{ flex: 1, gap: 2 }}>
                       <T variant="subheading">{t.label}</T>
                       <Animated.View key={preview} entering={FadeIn.duration(400)}>

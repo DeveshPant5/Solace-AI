@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { SplashIntro } from '@/components/SplashIntro';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { loadSolLook } from '@/lib/solLook';
 import { useNotificationRouting } from '@/lib/notifications';
 import { ThemeModeProvider, useTheme, useThemeMode } from '@/theme';
 
@@ -24,7 +25,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function RootNavigator() {
   const c = useTheme();
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const { loaded: themeLoaded } = useThemeMode();
   const [fontsLoaded, fontError] = useFonts({
     Newsreader_500Medium,
@@ -37,6 +38,10 @@ function RootNavigator() {
   });
   const ready = (fontsLoaded || !!fontError) && status !== 'loading' && themeLoaded;
   useNotificationRouting(ready && status === 'signedIn');
+  // The person's own Sol, if they've found the wardrobe.
+  useEffect(() => {
+    void loadSolLook(user?.id ?? null);
+  }, [user?.id]);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync().catch(() => undefined);
@@ -70,6 +75,7 @@ function RootNavigator() {
           <Stack.Screen name="tasks/[id]" options={{ animation: 'fade' }} />
           <Stack.Screen name="memory" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="sol-studio" options={{ animation: 'fade' }} />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn} redirectTo="/">
           <Stack.Screen name="welcome" options={{ animation: 'fade' }} />

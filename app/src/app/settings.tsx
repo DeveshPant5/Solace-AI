@@ -113,7 +113,7 @@ export default function Settings() {
                 borderColor: active ? c.primary : c.line,
               }}
             >
-              <Sol size={48} mood={t.mood} animated={false} />
+              <Sol size={48} mood={t.mood} animated={false} moodFace />
               <T variant="bodyStrong">{t.label}</T>
             </Tappable>
           );

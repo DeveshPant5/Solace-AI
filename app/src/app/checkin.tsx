@@ -54,7 +54,7 @@ export default function Checkin() {
       <Screen>
         <Header title="Check-in saved" />
         <Animated.View entering={ZoomIn.springify()} style={{ alignItems: 'center', marginTop: space.lg }}>
-          <Sol size={150} mood={moodToExpression(mood)} tint={mood ?? 0} />
+          <Sol size={150} mood={moodToExpression(mood)} tint={mood ?? 0} moodFace />
           <Animated.View entering={FadeIn.delay(300)}>
             <Pill text={`+${result.xp} XP`} icon="star" bg={c.butterSoft} fg={c.ink} />
           </Animated.View>
@@ -82,7 +82,7 @@ export default function Checkin() {
       <Header title="Check in" />
       <PipTip id="checkin" />
       <View style={{ alignItems: 'center' }}>
-        <Sol size={140} mood={mood ? moodToExpression(mood) : 'listening'} tint={mood ?? 0} />
+        <Sol size={140} mood={mood ? moodToExpression(mood) : 'listening'} tint={mood ?? 0} moodFace />
         <T variant="title" center style={{ marginTop: space.md }}>
           {mood ? MOODS[mood - 1]!.label : 'How are you, really?'}
         </T>
@@ -115,7 +115,7 @@ export default function Checkin() {
                 transform: [{ scale: active ? 1.08 : 1 }],
               }}
             >
-              <Sol size={46} mood={moodToExpression(m.value)} tint={m.value} animated={false} />
+              <Sol size={46} mood={moodToExpression(m.value)} tint={m.value} animated={false} moodFace />
             </Tappable>
           );
         })}

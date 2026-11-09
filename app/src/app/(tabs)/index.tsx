@@ -157,7 +157,7 @@ export default function Home() {
                         style={{ alignItems: 'center', gap: 4 }}
                       >
                         <View style={{ backgroundColor: a.soft, borderRadius: 18, padding: 3 }}>
-                          <Sol size={44} mood={moodToExpression(m.value)} tint={m.value} animated={false} />
+                          <Sol size={44} mood={moodToExpression(m.value)} tint={m.value} animated={false} moodFace />
                         </View>
                         <T variant="small" color={c.inkSoft} style={{ fontSize: 11 }}>
                           {m.label}
