@@ -244,6 +244,22 @@ describe("XP and limits", () => {
     assert.equal(r.json.error.code, "ai_unavailable");
   });
 
+  test("with AI off, a message about self-harm still gets a caring reply and the help card", { skip: aiEnabled }, async () => {
+    const { token } = A;
+    const convo = await call("/conversations", { method: "POST", token });
+    const res = await fetch(`${base}/conversations/${convo.json.conversation.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ content: "I keep thinking about hurting myself" }),
+    });
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assert.match(text, /event: signal\ndata: \{"mood":"unclear","emotions":\[\],"risk":"crisis"\}/);
+    assert.match(text, /event: done/);
+    assert.match(text, /help lines below/);
+    assert.match(text, /"activity":"help_now"/);
+  });
+
   test("repeated failed sign-ins for one account are paused", async () => {
     const address = email();
     tokens.push((await call("/auth/signup", { body: { name: "T", email: address, password: "password-123" } })).json.token);

@@ -180,8 +180,9 @@ describe("chat with Sol (Claude)", () => {
   test("a declined reply to a message about dying still points to help", async () => {
     const { json } = await api("/conversations", "POST");
     const events = await chat(json.conversation.id, "I want to die");
-    // The keyword floor lifts the classifier's "none".
-    assert.equal(events.find((e) => e.event === "signal")?.data.risk, "concern");
+    // The card shows straight away from the keyword check; the classifier's "none" is then lifted to "concern".
+    const signals = events.filter((e) => e.event === "signal").map((e) => e.data.risk);
+    assert.deepEqual(signals, ["crisis", "concern"]);
     const done = events.find((e) => e.event === "done")!;
     assert.match(done.data.message.content, /help lines/);
     assert.equal(done.data.message.meta.safety, "concern");

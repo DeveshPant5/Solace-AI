@@ -139,16 +139,17 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
   const user = currentUser(req);
   const convo = await ownedConversation(user.id, String(req.params.id ?? ""));
   const { content } = SendMessage.parse(req.body);
-  if (!aiEnabled) {
-    throw new HttpError(503, "Sol isn't connected yet. Add a Groq API key (free) or an Anthropic API key to the backend to start chatting.", "ai_unavailable");
-  }
-  if (isShuttingDown()) {
-    throw new HttpError(503, "Sol is taking a short pause while the server restarts. Please try again in a moment.", "restarting");
-  }
-  if (!aiAllowed({ userId: user.id })) {
-    throw new HttpError(503, RESTING, "ai_resting");
-  }
-  if ((activeTurns.get(user.id) ?? 0) >= MAX_ACTIVE_TURNS) {
+  // A message that sounds unsafe is always answered with real help, even when Sol can't reply right now.
+  const keywordOnly = combineRisk(null, content);
+  const unavailable = !aiEnabled
+    ? new HttpError(503, "Sol isn't connected yet. Add a Groq API key (free) or an Anthropic API key to the backend to start chatting.", "ai_unavailable")
+    : isShuttingDown()
+      ? new HttpError(503, "Sol is taking a short pause while the server restarts. Please try again in a moment.", "restarting")
+      : !aiAllowed({ userId: user.id })
+        ? new HttpError(503, RESTING, "ai_resting")
+        : null;
+  if (unavailable && keywordOnly === "none") throw unavailable;
+  if (!unavailable && (activeTurns.get(user.id) ?? 0) >= MAX_ACTIVE_TURNS) {
     throw new HttpError(429, "Sol is still finishing a reply. Give it a moment, then send again.", "busy");
   }
 
@@ -186,11 +187,22 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
 
     emit("user", { id: userMessage.id, createdAt: userMessage.created_at });
 
+    // A clear statement of danger shows the safety card straight away; the model's signal can refine it later.
+    const latest: { signal: MessageSignal | null } = { signal: null };
+    if (keywordOnly !== "none") {
+      latest.signal = { mood: "unclear", emotions: [], risk: keywordOnly };
+      emit("signal", latest.signal);
+      await saveSignal(userMessage.id, latest.signal);
+    }
+
+    // Sol can't reply right now (AI off, resting or restarting), but this message needs an answer.
+    if (unavailable) {
+      await sendSafetyReply(convo.id, keywordOnly, emit);
+      return;
+    }
+
     // The mood and safety signal runs alongside the reply and is saved on its own,
     // so it is kept (and the safety card shows) even if the reply fails.
-    // Until the model answers, the keyword check alone decides (an explicit statement is never missed).
-    const keywordOnly = combineRisk(null, content);
-    const latest: { signal: MessageSignal | null } = { signal: null };
     const signalPromise = analyzeMessage(content, recentText, { userId: user.id })
       .catch(() => null)
       .then(async (modelSignal) => {
@@ -200,12 +212,10 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
           : risk !== "none"
             ? { mood: "unclear", emotions: [], risk }
             : null;
-        latest.signal = signal;
         if (signal) {
+          latest.signal = signal;
           emit("signal", signal);
-          await query("UPDATE messages SET meta = meta || $2::jsonb WHERE id = $1", [userMessage.id, { signal }]).catch(
-            (err) => logAiError("signal-save", err),
-          );
+          await saveSignal(userMessage.id, signal);
         }
         return signal;
       });
@@ -257,6 +267,12 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
       if (!shutdownSignal.aborted) logAiError("chat", err);
       // The reply is already stored and was sent; something after it (XP, title) failed. Nothing more to do.
       if (replySaved) return;
+      // Nothing was written and the message sounds unsafe: answer with help instead of an error.
+      const risk = latest.signal?.risk ?? keywordOnly;
+      if (!turn.text.trim() && risk !== "none") {
+        await sendSafetyReply(convo.id, risk, emit);
+        return;
+      }
       // Keep whatever Sol had already written, marked as unfinished, so the conversation reads sensibly.
       if (turn.text.trim()) {
         await query("INSERT INTO messages (conversation_id, role, content, meta) VALUES ($1, 'assistant', $2, $3)", [
@@ -321,6 +337,27 @@ async function loadHistory(conversationId: string) {
 const CRISIS_SUGGESTION: Suggestion = { activity: "help_now", reason: "Support is here, right now, whenever you want it." };
 const DECLINED_WITH_CARE =
   "I want to make sure you get the right support with this. You don't have to carry it alone: the help lines below are there right now, day or night. I'm still here with you too.";
+
+const SAFETY_REPLY =
+  "I'm really glad you told me, and I want you to have support right now. I can't reply properly at the moment, so please reach out to one of the help lines below. They're there day or night. If you're in danger, call your local emergency number.";
+
+async function saveSignal(messageId: string, signal: MessageSignal) {
+  await query("UPDATE messages SET meta = meta || $2::jsonb WHERE id = $1", [messageId, { signal }]).catch((err) =>
+    logAiError("signal-save", err),
+  );
+}
+
+/** A caring reply with the help card, for an unsafe-sounding message when Sol can't answer. */
+async function sendSafetyReply(conversationId: string, risk: Risk, emit: Emit) {
+  const meta = { suggestions: [CRISIS_SUGGESTION], safety: risk, offline: true };
+  const saved = await queryOne<{ id: string; created_at: string }>(
+    "INSERT INTO messages (conversation_id, role, content, meta) VALUES ($1, 'assistant', $2, $3) RETURNING id, created_at",
+    [conversationId, SAFETY_REPLY, meta],
+  );
+  await query("UPDATE conversations SET updated_at = now() WHERE id = $1", [conversationId]);
+  emit("suggestion", CRISIS_SUGGESTION);
+  emit("done", { message: { id: saved!.id, role: "assistant", content: SAFETY_REPLY, meta, createdAt: saved!.created_at }, xp: 0 });
+}
 
 /** Makes sure a reply to a message that sounds unsafe always points to real help. */
 function applySafety(turn: ReturnType<typeof newTurnResult>, risk: Risk, emit: Emit) {
