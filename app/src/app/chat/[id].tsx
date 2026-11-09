@@ -6,6 +6,7 @@ import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityCard } from '@/components/ActivityCard';
+import { MicButton } from '@/components/MicButton';
 import { Sol } from '@/components/Sol';
 import { TypingDots } from '@/components/TypingDots';
 import { Button, ErrorNote, Header, IconButton, Row, T, Tappable } from '@/components/ui';
@@ -16,6 +17,7 @@ import { formatTime } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { syncReminders } from '@/lib/notifications';
 import type { ChatMessage, ChatSignal, Suggestion } from '@/lib/types';
+import { setSolVoice, speakAsSol, stopSpeaking, useSolVoice } from '@/lib/voice';
 import { radius, shadow, space, type as typeScale, useTheme } from '@/theme';
 
 const PENDING = 'pending-reply';
@@ -111,6 +113,8 @@ export default function Chat() {
   const list = useRef<FlatList<ChatMessage>>(null);
   const startedWith = useRef(false);
   const abort = useRef<AbortController | null>(null);
+  const solVoice = useSolVoice();
+  const dictationBase = useRef('');
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -126,7 +130,10 @@ export default function Chat() {
 
   useEffect(() => {
     void load();
-    return () => abort.current?.abort();
+    return () => {
+      abort.current?.abort();
+      stopSpeaking();
+    };
   }, [load]);
 
   const patchPending = (fn: (m: ChatMessage) => ChatMessage) =>
@@ -191,6 +198,7 @@ export default function Chat() {
                 gotReply = true;
                 setMessages((list) => list.map((m) => (m.id === PENDING ? (data.message as ChatMessage) : m)));
                 haptic.soft();
+                void speakAsSol((data.message as ChatMessage).content);
                 break;
               case 'title':
                 setTitle(data.title);
@@ -272,7 +280,17 @@ export default function Chat() {
       <View style={{ paddingTop: insets.top + space.md, paddingHorizontal: space.xl }}>
         <Header
           title={title ?? 'Sol'}
-          right={loaded && messages.length > 0 ? <IconButton icon="trash-2" label="Delete conversation" tone="clear" onPress={remove} /> : undefined}
+          right={
+            <Row gap={space.xs}>
+              <IconButton
+                icon={solVoice ? 'volume-2' : 'volume-x'}
+                label={solVoice ? 'Sol speaks replies. Tap to read only.' : 'Sol replies in text. Tap to hear Sol.'}
+                tone="clear"
+                onPress={() => void setSolVoice(!solVoice)}
+              />
+              {loaded && messages.length > 0 && <IconButton icon="trash-2" label="Delete conversation" tone="clear" onPress={remove} />}
+            </Row>
+          }
         />
       </View>
       {loadError ? (
@@ -319,7 +337,10 @@ export default function Chat() {
         <Row gap={space.sm} style={[{ backgroundColor: c.surface, borderRadius: radius.xl, paddingLeft: space.lg, paddingRight: 6, paddingVertical: 6, alignItems: 'flex-end' }, shadow(c, 2)]}>
           <TextInput
             value={input}
-            onChangeText={setInput}
+            onChangeText={(v) => {
+              stopSpeaking();
+              setInput(v);
+            }}
             placeholder="Message Sol…"
             placeholderTextColor={c.inkFaint}
             multiline
@@ -328,6 +349,13 @@ export default function Chat() {
             onSubmitEditing={Platform.OS === 'web' ? () => send(input) : undefined}
             submitBehavior={Platform.OS === 'web' ? 'submit' : undefined}
             accessibilityLabel="Message Sol"
+          />
+          <MicButton
+            size={42}
+            onListeningChange={(on) => {
+              if (on) dictationBase.current = input.trim() ? `${input.trim()} ` : '';
+            }}
+            onText={(t) => setInput(`${dictationBase.current}${t}`.slice(0, 4000))}
           />
           <IconButton icon="arrow-up" label="Send" tone="primary" size={42} onPress={() => send(input)} />
         </Row>
