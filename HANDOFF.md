@@ -59,7 +59,8 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - no console errors
   - the welcome screen: `components/WindowScene.tsx` puts Pip on a windowsill in front of a window whose sky follows the time of day (rising sun, high sun and clouds, sunset, moon and stars), with curtains and a rod. The window fills the space between the wordmark and the buttons; Pip's line sits at the top and Pip stands on the sill.
   - the browser's own voice speaking (fallback path) and the mic button rendering in Chrome
-- **Release APK** built: `builds/Solace.apk` (41 MB, arm64-v8a, package `com.solace.companion`). It is hard-wired to `http://192.168.29.213:4000`, the user's Wi-Fi IP on 2026-11-05.
+- **Release APK** (2026-11-09): `builds/Solace.apk` (43 MB, arm64-v8a, package `com.solace.companion`), built against the deployed API **https://solace-api-zy7a.onrender.com**. Checked inside the APK: the Render address is in the bundle, the old Wi-Fi address is gone, `usesCleartextTraffic=false`, no keys. The earlier Wi-Fi build (hard-wired to `http://192.168.29.213:4000`, 2026-11-05) is kept as `builds/Solace-2026-11-05-wifi.apk`.
+- **Production check (2026-11-09)** on the deployed API with a throwaway account (deleted after): Pip's help, check-in reply, chat with an activity card and a reminder, a crisis message (help card at once, Sol asks if they're safe, no phone numbers), and one ElevenLabs clip all worked; `/health/ip` shows the caller's real IP with `TRUST_PROXY=3`.
 
 - **Round 4 (2026-11-09), security hardening:**
   - a multi-agent audit found 68 issues; each was checked against the code and fixed or consciously accepted (section 6, "Security")
