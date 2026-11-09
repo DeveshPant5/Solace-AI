@@ -4,15 +4,17 @@ import { generateCheckinReply } from "../ai/analysis.js";
 import { buildUserContext } from "../ai/context.js";
 import { currentUser } from "../auth.js";
 import { MOOD_LABELS } from "../content/catalog.js";
-import { query, queryOne } from "../db.js";
-import { recordActivity, XP } from "../lib/progress.js";
+import { query, queryOne, withUserLock } from "../db.js";
+import { invalidateDailyCache } from "../lib/dailyCache.js";
+import { countToday, DAILY_XP_CAP, recordActivity, XP } from "../lib/progress.js";
+import { lineField, textField } from "../lib/text.js";
 
 export const moodsRouter = Router();
 
 const MoodInput = z.object({
   mood: z.number().int().min(1).max(5),
-  emotions: z.array(z.string().trim().min(1).max(30)).max(8).default([]),
-  note: z.string().trim().max(1000).optional(),
+  emotions: z.array(lineField(30).pipe(z.string().min(1))).max(8).default([]),
+  note: textField(1000).optional(),
 });
 
 const FALLBACK_REPLIES: Record<number, { message: string; activity: string }> = {
@@ -26,25 +28,33 @@ const FALLBACK_REPLIES: Record<number, { message: string; activity: string }> = 
 moodsRouter.post("/", async (req, res) => {
   const user = currentUser(req);
   const body = MoodInput.parse(req.body);
-  const entry = await queryOne<{ id: string; created_at: string }>(
-    "INSERT INTO mood_entries (user_id, mood, emotions, note) VALUES ($1, $2, $3, $4) RETURNING id, created_at",
-    [user.id, body.mood, body.emotions, body.note || null],
-  );
-  const xp = await recordActivity(user.id, "mood_checkin", XP.mood_checkin, { mood: body.mood });
+  const { entry, xp } = await withUserLock(user.id, async (db) => {
+    const today = await countToday(db, user.id, "mood_checkin", user.timezone);
+    const entry = await queryOne<{ id: string; created_at: string }>(
+      "INSERT INTO mood_entries (user_id, mood, emotions, note) VALUES ($1, $2, $3, $4) RETURNING id, created_at",
+      [user.id, body.mood, body.emotions, body.note || null],
+      db,
+    );
+    // Every check-in is kept; only the first few each day earn XP.
+    const earned = today.earned < DAILY_XP_CAP.mood_checkin ? XP.mood_checkin : 0;
+    const xp = await recordActivity(user.id, "mood_checkin", earned, { mood: body.mood }, db);
+    return { entry: entry!, xp };
+  });
   // A new check-in should refresh today's AI suggestions.
-  await query("DELETE FROM daily_cache WHERE user_id = $1 AND kind = 'daily'", [user.id]);
+  await invalidateDailyCache(user.id, ["daily"]);
 
   const checkin = `${MOOD_LABELS[body.mood]}${body.emotions.length ? `, feeling ${body.emotions.join(", ")}` : ""}${
     body.note ? `. Note: "${body.note}"` : ""
   }`;
   const context = await buildUserContext(user);
-  const reply = (await generateCheckinReply(context, checkin)) ?? FALLBACK_REPLIES[body.mood]!;
-  res.status(201).json({ entry: { id: entry!.id, createdAt: entry!.created_at, ...body }, xp, reply });
+  const reply = (await generateCheckinReply(context, checkin, { userId: user.id })) ?? FALLBACK_REPLIES[body.mood]!;
+  res.status(201).json({ entry: { id: entry.id, createdAt: entry.created_at, ...body }, xp, reply });
 });
 
 moodsRouter.get("/", async (req, res) => {
   const user = currentUser(req);
-  const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+  const requested = Math.trunc(Number(req.query.days));
+  const days = Number.isFinite(requested) && requested > 0 ? Math.min(requested, 365) : 30;
   const rows = await query<{ id: string; mood: number; emotions: string[]; note: string | null; created_at: string }>(
     `SELECT id, mood, emotions, note, created_at FROM mood_entries
      WHERE user_id = $1 AND created_at > now() - make_interval(days => $2)

@@ -4,9 +4,10 @@ import { generateMoves } from "../ai/analysis.js";
 import { buildUserContext } from "../ai/context.js";
 import { currentUser } from "../auth.js";
 import { ASSESSMENTS, FALLBACK_MOVES, scoreAssessment, type AssessmentKind } from "../content/assessments.js";
-import { query, queryOne } from "../db.js";
+import { query, queryOne, withUserLock } from "../db.js";
 import { HttpError } from "../errors.js";
-import { recordActivity, XP } from "../lib/progress.js";
+import { invalidateDailyCache } from "../lib/dailyCache.js";
+import { countToday, recordActivity, XP } from "../lib/progress.js";
 
 export const assessmentsRouter = Router();
 
@@ -43,23 +44,25 @@ assessmentsRouter.post("/", async (req, res) => {
     def.questions.map((q, i) => `- ${q}: ${def.options[body.answers[i]!]}`).join("\n") +
     `\nResult: ${band.label} (${score}/${maxScore}). ${band.summary}`;
   const context = await buildUserContext(user);
-  const moves = (await generateMoves(context, summary)) ?? FALLBACK_MOVES[def.kind][band.band] ?? [];
+  const moves = (await generateMoves(context, summary, { userId: user.id })) ?? FALLBACK_MOVES[def.kind][band.band] ?? [];
 
-  const row = await queryOne<{ id: string; created_at: string }>(
-    `INSERT INTO assessments (user_id, kind, answers, score, max_score, band, moves)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at`,
-    [user.id, def.kind, body.answers, score, maxScore, band.band, JSON.stringify(moves)],
-  );
-  const xp = await recordActivity(
-    user.id,
-    "assessment",
-    def.questions.length * XP.assessment_question + XP.assessment_bonus,
-    { kind: def.kind, band: band.band },
-  );
-  await query("DELETE FROM daily_cache WHERE user_id = $1 AND kind = 'daily'", [user.id]);
+  const { row, xp } = await withUserLock(user.id, async (db) => {
+    const row = await queryOne<{ id: string; created_at: string }>(
+      `INSERT INTO assessments (user_id, kind, answers, score, max_score, band, moves)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at`,
+      [user.id, def.kind, body.answers, score, maxScore, band.band, JSON.stringify(moves)],
+      db,
+    );
+    // Each check earns XP once a day; retaking it the same day is welcome but earns nothing extra.
+    const today = await countToday(db, user.id, "assessment", user.timezone, "AND meta->>'kind' = $4 AND xp > 0", [def.kind]);
+    const earned = today.n === 0 ? def.questions.length * XP.assessment_question + XP.assessment_bonus : 0;
+    const xp = await recordActivity(user.id, "assessment", earned, { kind: def.kind, band: band.band }, db);
+    return { row: row!, xp };
+  });
+  await invalidateDailyCache(user.id, ["daily"]);
   res.status(201).json({
     result: {
-      id: row!.id,
+      id: row.id,
       kind: def.kind,
       title: def.title,
       score,
@@ -68,7 +71,7 @@ assessmentsRouter.post("/", async (req, res) => {
       label: band.label,
       summary: band.summary,
       moves,
-      createdAt: row!.created_at,
+      createdAt: row.created_at,
     },
     xp,
   });
