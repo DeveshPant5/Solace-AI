@@ -10,7 +10,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, Mask, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/theme';
 
@@ -38,7 +38,8 @@ const SKY: Record<Slot, { sky: [string, string]; sun: string; glow: string; hill
   0: { sky: ['#FCDCC6', '#FCEFE3'], sun: '#FFC08A', glow: '#FFD9B0', hillBack: '#C9E2C4', hillFront: '#A6D0A8' },
   1: { sky: ['#C9E3F2', '#F1F1E6'], sun: '#FFE08A', glow: '#FFF0C2', hillBack: '#BEDDBE', hillFront: '#98C89C' },
   2: { sky: ['#F1C2BB', '#F6DED2'], sun: '#FFA487', glow: '#FFC9B0', hillBack: '#C5C9A7', hillFront: '#A5B88F' },
-  3: { sky: ['#3B3A68', '#7A6B9E'], sun: '#FFF3D6', glow: '#D9D4F5', hillBack: '#3F4B66', hillFront: '#303B53' },
+  // Night is a soft dusky lavender rather than deep navy, so it stays gentle next to the warm room.
+  3: { sky: ['#6F69A8', '#CBBBE0'], sun: '#FFF6DE', glow: '#F1ECFF', hillBack: '#8D8BB5', hillFront: '#71739C' },
 };
 
 /** Where the sun or moon sits, as a fraction of the window. */
@@ -129,10 +130,14 @@ export function WindowScene({ sill = 22, bandTop = 170, bandBottomFromSill = 236
                   <Stop offset="0" stopColor={t.glow} stopOpacity={0.9} />
                   <Stop offset="1" stopColor={t.glow} stopOpacity={0} />
                 </RadialGradient>
+                {/* The moon's crescent is cut out, so the sky and glow show through instead of a painted disc. */}
+                <Mask id="crescent" maskUnits="userSpaceOnUse" x={0} y={0} width={winW} height={winH}>
+                  <Rect x={0} y={0} width={winW} height={winH} fill="#FFFFFF" />
+                  <Circle cx={winW * sx + 7} cy={band(sf) - 5} r={15} fill="#000000" />
+                </Mask>
               </Defs>
               <Circle cx={winW * sx} cy={band(sf)} r={62} fill="url(#sunGlow)" />
-              <Circle cx={winW * sx} cy={band(sf)} r={slot === 3 ? 17 : 22} fill={t.sun} />
-              {slot === 3 && <Circle cx={winW * sx + 7} cy={band(sf) - 5} r={15} fill="#5B5285" />}
+              <Circle cx={winW * sx} cy={band(sf)} r={slot === 3 ? 17 : 22} fill={t.sun} mask={slot === 3 ? 'url(#crescent)' : undefined} />
               {/* Rolling hills far away */}
               <Path
                 d={`M0 ${winH * 0.74} C${winW * 0.25} ${winH * 0.64} ${winW * 0.45} ${winH * 0.72} ${winW * 0.62} ${winH * 0.68} C${winW * 0.8} ${winH * 0.64} ${winW * 0.92} ${winH * 0.7} ${winW} ${winH * 0.67} L${winW} ${winH} L0 ${winH} Z`}

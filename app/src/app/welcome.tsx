@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PipGuide } from '@/components/PipGuide';
@@ -11,16 +11,26 @@ import { useAuth } from '@/lib/auth';
 import { setVoiceEnabled, useVoice } from '@/lib/voice';
 import { fonts, space, useTheme } from '@/theme';
 
-/** Pip's width here, and how far its feet sit above the bottom of the drawing, so it stands on the sill. */
-const PIP = 206;
-const SILL = 22;
-const FEET = ((PIP * 290) / 240) * (22 / 290);
+const SILL = 20;
+
+/**
+ * Sizes for this screen by phone height, so everything fits without scrolling:
+ * Pip's width, the sky above its head (for the sun or moon) and the wordmark.
+ */
+function sizesFor(height: number) {
+  const tier = height >= 860 ? { pip: 150, sky: 74, mark: 52 } : height >= 800 ? { pip: 128, sky: 58, mark: 48 } : { pip: 106, sky: 44, mark: 42 };
+  const pipH = (tier.pip * 290) / 240;
+  // How far Pip's feet sit above the bottom of its drawing, so it stands on the sill.
+  const feet = pipH * (22 / 290);
+  return { ...tier, pipH, feet, windowH: Math.round(pipH + tier.sky), compact: height < 800 };
+}
 
 export default function Welcome() {
   const c = useTheme();
   const insets = useSafeAreaInsets();
   const { onboarding } = useAuth();
   const { enabled } = useVoice();
+  const size = sizesFor(useWindowDimensions().height);
 
   const next = () => router.push(onboarding ? '/sign-up' : '/personalize');
   const start = async (voice: boolean) => {
@@ -32,24 +42,25 @@ export default function Welcome() {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       {/* A warm wall, a little lighter towards the ceiling. */}
       <LinearGradient colors={[c.surfaceAlt, c.bg, c.sunken]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
-      <View style={{ paddingTop: insets.top + space.lg, alignItems: 'center', gap: 2 }}>
-        <T style={{ fontFamily: fonts.display, fontSize: 28, lineHeight: 34 }} color={c.primary}>
+      <View style={{ paddingTop: insets.top + (size.compact ? space.lg : space.xxl), alignItems: 'center', gap: space.xs }}>
+        <T style={{ fontFamily: fonts.display, fontSize: size.mark, lineHeight: Math.round(size.mark * 1.15), letterSpacing: -0.8 }} color={c.primary}>
           Solace
         </T>
-        <T variant="small" color={c.inkSoft}>
+        <T variant="quote" color={c.inkSoft} style={{ fontSize: size.compact ? 17 : 19, lineHeight: size.compact ? 23 : 26 }}>
           A softer place for your mind
         </T>
       </View>
 
-      {/* The window fills the space between the wordmark and the buttons: Pip's line at the top, Pip on the sill. */}
-      <View style={{ flex: 1, paddingHorizontal: space.lg, paddingTop: space.xl, paddingBottom: space.xxl }}>
+      {/* Pip's line, then a small window with Pip waving on the sill, centred between the wordmark and the buttons. */}
+      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: space.xl, paddingVertical: size.compact ? space.sm : space.lg }}>
         <PipGuide
           layout="stack"
-          size={PIP}
+          size={size.pip}
           stage={0}
           wave
-          backdrop={<WindowScene sill={SILL} />}
-          style={{ flex: 1, justifyContent: 'space-between', paddingTop: 44, paddingHorizontal: space.xxl, paddingBottom: SILL - FEET }}
+          backdrop={<WindowScene sill={SILL} bandTop={22} bandBottomFromSill={size.pipH} />}
+          backdropBehind="pip"
+          pipFrameStyle={{ height: size.windowH + SILL, marginHorizontal: space.xl, paddingBottom: SILL - size.feet }}
           line="Hi, I'm Pip, a little sprout Luma planted just for you. I'll help you set up your cosy corner. It only takes a minute."
         />
       </View>

@@ -76,6 +76,8 @@ export function PipGuide({
   layout = 'row',
   showPip = true,
   backdrop,
+  backdropBehind = 'all',
+  pipFrameStyle,
   children,
   style,
 }: {
@@ -93,6 +95,10 @@ export function PipGuide({
   showPip?: boolean;
   /** Drawn behind the bubble and Pip in the stack layout, e.g. a window scene. */
   backdrop?: ReactNode;
+  /** "all": the backdrop fills the whole guide. "pip": only a frame around Pip, with the bubble above it. */
+  backdropBehind?: 'all' | 'pip';
+  /** Size and padding of the frame around Pip when `backdropBehind` is "pip". */
+  pipFrameStyle?: StyleProp<ViewStyle>;
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -170,6 +176,19 @@ export function PipGuide({
   );
 
   if (!showPip) return <View style={style}>{bubble}</View>;
+  if (layout === 'stack' && backdrop && backdropBehind === 'pip') {
+    return (
+      <Animated.View entering={settle} style={[{ alignItems: 'center', gap: space.lg }, style]}>
+        {bubble}
+        <View style={[{ alignSelf: 'stretch', alignItems: 'center', justifyContent: 'flex-end' }, pipFrameStyle]}>
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            {backdrop}
+          </View>
+          {pip}
+        </View>
+      </Animated.View>
+    );
+  }
   if (layout === 'stack') {
     return (
       <Animated.View entering={settle} style={[{ alignItems: 'center', gap: space.lg }, style]}>
