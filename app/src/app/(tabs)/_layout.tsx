@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sol } from '@/components/Sol';
 import { T, type IconName } from '@/components/ui';
 import { haptic } from '@/lib/haptics';
-import { radius, shadow, useTheme } from '@/theme';
+import { fonts, radius, shadow, useTheme } from '@/theme';
 
 const TABS: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Home', icon: 'home' },
@@ -60,10 +60,15 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
               accessibilityLabel={tab.label}
               style={styles.item}
             >
-              <View style={[styles.iconPill, focused && { backgroundColor: c.primarySoft }]}>
-                <Feather name={tab.icon} size={21} color={focused ? c.primary : c.inkFaint} />
+              {/* No box behind the active tab: it just turns green and a little bolder. */}
+              <View style={styles.iconSlot}>
+                <Feather name={tab.icon} size={focused ? 23 : 21} color={focused ? c.primary : c.inkFaint} />
               </View>
-              <T variant="small" color={focused ? c.primary : c.inkFaint} style={{ fontSize: 11, lineHeight: 14 }}>
+              <T
+                variant="small"
+                color={focused ? c.primary : c.inkFaint}
+                style={{ fontSize: 11, lineHeight: 14, fontFamily: focused ? fonts.heavy : fonts.regular }}
+              >
                 {tab.label}
               </T>
             </Pressable>
@@ -98,6 +103,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  iconPill: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: radius.pill },
+  iconSlot: { height: 30, alignItems: 'center', justifyContent: 'center' },
   solButton: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: -2 },
 });

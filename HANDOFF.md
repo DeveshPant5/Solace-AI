@@ -83,6 +83,7 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
   - Sol reads its replies aloud with the phone's voice (free; `speakAsSol` in `app/src/lib/voice.ts`), with a speaker toggle in the chat header (remembered in `solace.solVoice`, on by default). The chat box has the mic (long dictation).
   - Remembering: Sol's context now includes the last 4 things the person said in other conversations (memory on only), and the persona asks Sol to save people, events and goals the same turn.
   - The first-run tour and screen tips are for new accounts only: signing in marks them seen on that device (`markTourSeen` in `PipTour.tsx`, called from `signIn`), and the tour only starts by itself for accounts created within a day. "Take the tour with Pip" still replays both.
+  - Tab bar: no green box behind the active tab any more (the user found it bad UX); the active tab's icon turns green and slightly larger and its label green and bold (Figtree 700), the others stay grey. The Sol button in the middle is unchanged.
   - Lighter screens: removed most secondary lines (Practices and Journey subtitles, check-in blurbs and XP line, quick-start and You-tab row subtitles, achievement descriptions, Journey hints); shorter Sol intro and privacy note. The Breathe & ground cards size to their content and share one height (152 px, no empty middle).
 
 ### Not yet tested
