@@ -5,7 +5,7 @@ import { aiEnabled, config, voiceEnabled } from "./config.js";
 import { databaseReachable } from "./db.js";
 import { errorHandler, notFound } from "./errors.js";
 import { requestContext, securityHeaders } from "./lib/http.js";
-import { userRateLimit } from "./lib/rateLimit.js";
+import { clientIp, userRateLimit } from "./lib/rateLimit.js";
 import { assessmentsRouter } from "./routes/assessments.js";
 import { authRouter } from "./routes/auth.js";
 import { conversationsRouter } from "./routes/conversations.js";
@@ -40,6 +40,14 @@ export function createApp() {
   app.get("/health", async (_req, res) => {
     const db = await databaseReachable();
     res.status(db ? 200 : 503).json({ ok: db, db: db ? "up" : "down", ai: aiEnabled, voice: voiceEnabled });
+  });
+
+  // For checking TRUST_PROXY after deploying: open it from your phone and compare with your public IP.
+  // It only shows callers their own address.
+  app.get("/health/ip", (req, res) => {
+    const forwarded = req.headers["x-forwarded-for"];
+    const hops = typeof forwarded === "string" ? forwarded.split(",").length : 0;
+    res.json({ ip: clientIp(req), forwardedHops: hops, trustProxy: config.trustProxy });
   });
 
   // Everything a signed-in person does, together: generous for real use, a ceiling for scripts.

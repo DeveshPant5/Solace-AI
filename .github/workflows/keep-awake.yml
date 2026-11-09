@@ -1,0 +1,20 @@
+# Keeps the deployed API awake on Render's free plan, which sleeps after 15
+# minutes without requests (the next request then waits up to a minute).
+# Off until you add a repository variable BACKEND_URL (Settings -> Secrets and
+# variables -> Actions -> Variables), e.g. https://solace-api.onrender.com
+# GitHub may run scheduled jobs a few minutes late, so an occasional sleep can still happen.
+name: Keep the API awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    if: ${{ vars.BACKEND_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /health
+        run: curl --silent --show-error --max-time 90 --retry 2 "${{ vars.BACKEND_URL }}/health"
