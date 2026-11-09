@@ -1,7 +1,8 @@
 export interface BreathPattern {
   id: string;
   title: string;
-  subtitle: string;
+  /** A few quiet words on how the rhythm feels; the counts come from `phases`. */
+  feel: string;
   phases: { label: string; seconds: number; scale: number }[];
   cycles: number;
 }
@@ -11,7 +12,7 @@ export const BREATH_PATTERNS: Record<string, BreathPattern> = {
   calm: {
     id: 'calm',
     title: 'Calm breathing',
-    subtitle: 'In for 5, out for 5. A gentle, even rhythm.',
+    feel: 'A gentle, even rhythm',
     phases: [
       { label: 'Breathe in', seconds: 5, scale: 1 },
       { label: 'Breathe out', seconds: 5, scale: 0.55 },
@@ -21,7 +22,7 @@ export const BREATH_PATTERNS: Record<string, BreathPattern> = {
   box: {
     id: 'box',
     title: 'Box breathing',
-    subtitle: 'In 4, hold 4, out 4, hold 4. Steady and focusing.',
+    feel: 'Steady and focusing',
     phases: [
       { label: 'Breathe in', seconds: 4, scale: 1 },
       { label: 'Hold', seconds: 4, scale: 1 },
@@ -33,7 +34,7 @@ export const BREATH_PATTERNS: Record<string, BreathPattern> = {
   '478': {
     id: '478',
     title: '4-7-8 breathing',
-    subtitle: 'In 4, hold 7, out 8. The long exhale calms you down.',
+    feel: 'The long exhale settles you',
     phases: [
       { label: 'Breathe in', seconds: 4, scale: 1 },
       { label: 'Hold', seconds: 7, scale: 1 },

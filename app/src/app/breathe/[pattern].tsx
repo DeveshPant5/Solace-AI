@@ -1,17 +1,18 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { PipTip } from '@/components/PipTip';
 import { Sol } from '@/components/Sol';
 import { Button, Chip, Header, Pill, Row, T } from '@/components/ui';
-import { BREATH_PATTERNS } from '@/content/wellness';
+import { BREATH_PATTERNS, type BreathPattern } from '@/content/wellness';
 import { api } from '@/lib/api';
 import { haptic } from '@/lib/haptics';
-import { space, useTheme } from '@/theme';
+import { fonts, radius, space, useTheme } from '@/theme';
 
 export default function Breathe() {
   const c = useTheme();
@@ -126,18 +127,23 @@ export default function Breathe() {
                   {left}
                 </T>
               </Animated.View>
-            ) : (
-              <T variant="body" color={c.inkSoft} center style={{ marginTop: space.md, maxWidth: 260 }}>
-                {pattern.subtitle}
-              </T>
-            )}
+            ) : null}
           </View>
         </View>
 
-        {running && (
-          <T variant="small" color={c.inkSoft} center style={{ marginBottom: space.md }}>
-            Round {cycle + 1} of {pattern.cycles}
-          </T>
+        {!finished && (
+          <View style={{ alignItems: 'center', gap: space.sm, marginBottom: space.lg }}>
+            <Rhythm phases={pattern.phases} active={running ? phase : -1} />
+            {running ? (
+              <T variant="small" color={c.inkFaint} center>
+                Round {cycle + 1} of {pattern.cycles}
+              </T>
+            ) : (
+              <T variant="quote" color={c.inkSoft} center style={styles.feel}>
+                {pattern.feel}
+              </T>
+            )}
+          </View>
         )}
         {finished ? (
           <View style={{ gap: space.sm }}>
@@ -162,7 +168,57 @@ export default function Breathe() {
   );
 }
 
+/**
+ * The rhythm as counts: "5 in ~ 5 out", joined by little hand-drawn breath waves.
+ * While a session runs, the step you're on stays clear and the rest soften.
+ */
+function Rhythm({ phases, active }: { phases: BreathPattern['phases']; active: number }) {
+  const c = useTheme();
+  return (
+    <View
+      accessible
+      accessibilityLabel={phases.map((p) => `${cue(p.label)} for ${p.seconds}`).join(', ')}
+      style={[styles.rhythm, { backgroundColor: c.scheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.6)' }]}
+    >
+      {phases.map((p, i) => (
+        <Fragment key={i}>
+          {i > 0 && <BreathWave color={c.inkFaint} />}
+          <RhythmStep seconds={p.seconds} label={cue(p.label)} state={active < 0 ? 'idle' : active === i ? 'on' : 'off'} />
+        </Fragment>
+      ))}
+    </View>
+  );
+}
+
+function RhythmStep({ seconds, label, state }: { seconds: number; label: string; state: 'idle' | 'on' | 'off' }) {
+  const c = useTheme();
+  const fade = useAnimatedStyle(() => ({ opacity: withTiming(state === 'off' ? 0.35 : 1, { duration: 700 }) }), [state]);
+  return (
+    <Animated.View style={[styles.step, fade]}>
+      <Text style={[styles.count, { color: state === 'on' ? c.primary : c.ink }]}>{seconds}</Text>
+      <Text style={[styles.cue, { color: state === 'on' ? c.primary : c.inkSoft }]}>{label}</Text>
+    </Animated.View>
+  );
+}
+
+/** A small, slightly uneven wave, like a pencil line drawn between counts. */
+function BreathWave({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={12} viewBox="0 0 20 10" style={{ marginBottom: 16 }}>
+      <Path d="M1.5 5.4C3.6 1.6 6.4 1.4 8.6 4.8S14.2 8.9 18.6 4.3" stroke={color} strokeWidth={1.5} strokeLinecap="round" fill="none" />
+    </Svg>
+  );
+}
+
+/** "Breathe in" becomes "in", "Hold" becomes "hold". */
+const cue = (label: string) => label.replace(/^breathe\s+/i, '').toLowerCase();
+
 const styles = StyleSheet.create({
   circle: { position: 'absolute', width: 280, height: 280, borderRadius: 140 },
   halo: { position: 'absolute', width: 280, height: 280, borderRadius: 140 },
+  rhythm: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.md, paddingHorizontal: space.xl, borderRadius: radius.lg },
+  step: { alignItems: 'center', minWidth: 36 },
+  count: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, fontVariant: ['tabular-nums'] },
+  cue: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 16 },
+  feel: { fontSize: 18, lineHeight: 24 },
 });
