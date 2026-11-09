@@ -43,7 +43,7 @@ progressRouter.get("/", async (req, res) => {
     { id: "breath_5", title: "Breath keeper", description: "Finished 5 breathing sessions", goal: 5, value: count("breathing") },
     { id: "ground_1", title: "Feet on the ground", description: "Tried the 5-4-3-2-1 grounding", goal: 1, value: count("grounding") },
     { id: "journal_3", title: "Storyteller", description: "Wrote 3 journal entries", goal: 3, value: journalCount?.n ?? 0 },
-    { id: "talk_1", title: "Opening up", description: "Had your first conversation with Sol", goal: 1, value: count("chat") },
+    { id: "talk_1", title: "Opening up", description: "Had your first conversation with Luma", goal: 1, value: count("chat") },
     { id: "checks_all", title: "Know yourself", description: "Completed all three wellbeing checks", goal: 3, value: assessmentKinds.length },
   ].map((a) => ({ ...a, value: Math.min(a.value, a.goal), earned: a.value >= a.goal }));
 

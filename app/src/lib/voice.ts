@@ -186,9 +186,9 @@ export function prefetchLine(text: string) {
   });
 }
 
-// ---------- Sol's voice in chat ----------
+// ---------- Luma's voice in chat ----------
 //
-// Sol reads its replies aloud with the phone's own voice: free, no limits, and
+// Luma reads its replies aloud with the phone's own voice: free, no limits, and
 // it works offline. (Pip's natural ElevenLabs voice is kept for Pip, whose lines
 // are short and cached.) A little lower and steadier than Pip, still unhurried.
 // On by default; the speaker button in the chat header turns it off, and the
@@ -232,7 +232,7 @@ function forSpeech(text: string) {
     .trim();
 }
 
-/** Says one of Sol's replies, if Sol's voice is on. Stops anything already playing. */
+/** Says one of Luma's replies, if Luma's voice is on. Stops anything already playing. */
 export async function speakAsSol(text: string): Promise<void> {
   const words = forSpeech(text);
   if (!solVoiceOn || !words) return;

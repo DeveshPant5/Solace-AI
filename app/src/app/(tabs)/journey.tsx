@@ -140,7 +140,7 @@ export default function Journey() {
         </Animated.View>
       )}
 
-      <SectionTitle title="Sol’s reflection" />
+      <SectionTitle title="Luma’s reflection" />
       <Card tone={c.lavenderSoft} style={{ gap: space.md }}>
         {reflection === undefined ? (
           <Row gap={space.md}>
@@ -177,7 +177,7 @@ export default function Journey() {
           <Row gap={space.md}>
             <Sol size={48} mood="calm" animated={false} />
             <T variant="small" color={c.inkSoft} style={{ flex: 1 }}>
-              Check in a few times this week and Sol will reflect on how it’s been going.
+              Check in a few times this week and Luma will reflect on how it’s been going.
             </T>
           </Row>
         )}

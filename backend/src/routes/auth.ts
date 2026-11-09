@@ -28,7 +28,7 @@ const NewPassword = z
   .min(8, "Use at least 8 characters")
   .refine((p) => Buffer.byteLength(p, "utf8") <= 72, "Please keep your password under 72 characters");
 
-/** Only the app's known focus areas are kept (they end up in Sol's context). */
+/** Only the app's known focus areas are kept (they end up in Luma's context). */
 export const FocusList = z
   .array(z.string().max(40))
   .max(10)

@@ -284,7 +284,7 @@ describe("privacy", () => {
     assert.match(context, /Memory is OFF/);
   });
 
-  test("what they said in earlier conversations reaches Sol only while memory is on", async () => {
+  test("what they said in earlier conversations reaches Luma only while memory is on", async () => {
     const { token, user } = await signUp();
     const convo = await call("/conversations", { method: "POST", token });
     await pool.query("INSERT INTO messages (conversation_id, role, content) VALUES ($1, 'user', $2)", [

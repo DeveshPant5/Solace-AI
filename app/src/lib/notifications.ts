@@ -196,7 +196,7 @@ export async function sendTestNotification() {
   const permission = await requestNotificationPermission();
   if (permission !== 'granted') return false;
   await Notifications.scheduleNotificationAsync({
-    content: { title: 'Hi from Sol', body: 'This is how your gentle reminders will look.', data: { url: '/checkin' } },
+    content: { title: 'Hi from Luma', body: 'This is how your gentle reminders will look.', data: { url: '/checkin' } },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: CHANNEL_ID },
   });
   return true;

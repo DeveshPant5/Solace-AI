@@ -24,7 +24,7 @@ const PENDING = 'pending-reply';
 
 const PROMPTS = ['Something’s been on my mind…', 'Can you help me calm down?', 'I had a good day today', 'I don’t know how I feel'];
 
-/** Renders **bold** spans; Sol mostly writes plain text. */
+/** Renders **bold** spans; Luma mostly writes plain text. */
 function RichText({ text, color }: { text: string; color: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
@@ -89,7 +89,7 @@ function Extras({ message }: { message: ChatMessage }) {
             <Row gap={6} style={{ alignSelf: 'flex-start', backgroundColor: c.lavenderSoft, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill }}>
               <Feather name="bookmark" size={13} color={c.primary} />
               <T variant="small" color={c.primary} style={{ fontSize: 13 }}>
-                Sol will remember this
+                Luma will remember this
               </T>
             </Row>
           </Tappable>
@@ -279,12 +279,12 @@ export default function Chat() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior="padding">
       <View style={{ paddingTop: insets.top + space.md, paddingHorizontal: space.xl }}>
         <Header
-          title={title ?? 'Sol'}
+          title={title ?? 'Luma'}
           right={
             <Row gap={space.xs}>
               <IconButton
                 icon={solVoice ? 'volume-2' : 'volume-x'}
-                label={solVoice ? 'Sol speaks replies. Tap to read only.' : 'Sol replies in text. Tap to hear Sol.'}
+                label={solVoice ? 'Luma speaks replies. Tap to read only.' : 'Luma replies in text. Tap to hear Luma.'}
                 tone="clear"
                 onPress={() => void setSolVoice(!solVoice)}
               />
@@ -341,14 +341,14 @@ export default function Chat() {
               stopSpeaking();
               setInput(v);
             }}
-            placeholder="Message Sol…"
+            placeholder="Message Luma…"
             placeholderTextColor={c.inkFaint}
             multiline
             maxLength={4000}
             style={{ flex: 1, color: c.ink, fontFamily: typeScale.body.fontFamily, fontSize: 16, maxHeight: 120, paddingVertical: 10 }}
             onSubmitEditing={Platform.OS === 'web' ? () => send(input) : undefined}
             submitBehavior={Platform.OS === 'web' ? 'submit' : undefined}
-            accessibilityLabel="Message Sol"
+            accessibilityLabel="Message Luma"
           />
           <MicButton
             size={42}

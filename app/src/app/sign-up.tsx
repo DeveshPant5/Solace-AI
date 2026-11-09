@@ -43,7 +43,7 @@ export default function SignUp() {
     <Screen>
       <Header />
       <PipGuide
-        line={`Almost there${first ? `, ${first}` : ''}. Make an account so Sol can remember what matters to you. It stays private.`}
+        line={`Almost there${first ? `, ${first}` : ''}. Make an account so Luma can remember what matters to you. It stays private.`}
         layout="stack"
         mood="happy"
         stage={ONBOARDING_LAST_STAGE}
@@ -56,7 +56,7 @@ export default function SignUp() {
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="What should Sol call you?"
+          placeholder="What should Luma call you?"
           placeholderTextColor={c.inkFaint}
           style={inputStyle(c)}
           autoComplete="given-name"

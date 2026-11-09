@@ -92,7 +92,7 @@ export default function Settings() {
         })}
       </Row>
 
-      <SectionTitle title="How Sol talks to you" />
+      <SectionTitle title="How Luma talks to you" />
       <Row gap={space.sm}>
         {TONES.map((t) => {
           const active = tone === t.id;
@@ -152,7 +152,7 @@ export default function Settings() {
           onPress={async () => {
             const ok = await confirm(
               'Delete your account?',
-              'This permanently deletes your account, check-ins, journal, conversations and everything Sol remembers. This can’t be undone.',
+              'This permanently deletes your account, check-ins, journal, conversations and everything Luma remembers. This can’t be undone.',
               'Delete everything',
             );
             if (!ok) return;

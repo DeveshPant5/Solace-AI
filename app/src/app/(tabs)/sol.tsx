@@ -43,7 +43,7 @@ export default function SolTab() {
   };
 
   const remove = async (convo: Conversation) => {
-    const ok = await confirm('Delete this conversation?', 'It will be removed for good. Things Sol remembered stay in Memory until you delete them there.');
+    const ok = await confirm('Delete this conversation?', 'It will be removed for good. Things Luma remembered stay in Memory until you delete them there.');
     if (!ok) return;
     setData((d) => (d ? { conversations: d.conversations.filter((x) => x.id !== convo.id) } : d));
     try {
@@ -61,7 +61,7 @@ export default function SolTab() {
       <View style={{ alignItems: 'center', marginTop: space.lg }}>
         <Sol size={150} mood="happy" />
         <T variant="title" center style={{ marginTop: space.md }}>
-          Hi{user?.name ? ` ${user.name}` : ''}, I’m Sol
+          Hi{user?.name ? ` ${user.name}` : ''}, I’m Luma
         </T>
         <T variant="body" color={c.inkSoft} center style={{ marginTop: space.sm, maxWidth: 320 }}>
           I’m here to listen, whenever you need me.
@@ -100,7 +100,7 @@ export default function SolTab() {
       <SectionTitle title="Your conversations" />
       {error && !data && <ErrorNote message={error} onRetry={reload} />}
       {data && conversations.length === 0 && (
-        <EmptyState icon="message-square" title="No conversations yet" body="Whatever’s on your mind, big or small, Sol is ready when you are." />
+        <EmptyState icon="message-square" title="No conversations yet" body="Whatever’s on your mind, big or small, Luma is ready when you are." />
       )}
       <View style={{ gap: space.sm }}>
         {conversations.map((convo, i) => (

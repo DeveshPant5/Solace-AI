@@ -85,13 +85,13 @@ export const config = {
 
   // ---------- Groq (open models, free tier) ----------
   groqApiKey: read("GROQ_API_KEY"),
-  /** Sol's chat. Needs tool use; gpt-oss-120b also has the largest free daily allowance. */
+  /** Luma's chat. Needs tool use; gpt-oss-120b also has the largest free daily allowance. */
   groqChatModel: parse("GROQ_CHAT_MODEL", z.string().regex(MODEL_ID, "expected a Groq model id"), "openai/gpt-oss-120b"),
   /** Short structured jobs (mood signal, titles, daily card, Pip's help). Free limits are per model, so this spreads the load. */
   groqFastModel: parse("GROQ_FAST_MODEL", z.string().regex(MODEL_ID, "expected a Groq model id"), "openai/gpt-oss-20b"),
   /**
    * Tried in order when a model hits its free limit (each model has its own allowance),
-   * so Sol keeps talking when one is used up. Comma-separated; empty for none.
+   * so Luma keeps talking when one is used up. Comma-separated; empty for none.
    */
   groqChatFallbacks: parse("GROQ_CHAT_FALLBACK_MODELS", modelList, "qwen/qwen3.8-27b,openai/gpt-oss-20b"),
   groqFastFallbacks: parse("GROQ_FAST_FALLBACK_MODELS", modelList, "qwen/qwen3.8-27b"),
@@ -147,10 +147,10 @@ function pickProvider(): "groq" | "anthropic" | null {
   return config.groqApiKey ? "groq" : config.anthropicApiKey ? "anthropic" : null;
 }
 
-/** Which AI service powers Sol and the AI suggestions, or null when AI is off (offline content is used). */
+/** Which AI service powers Luma and the AI suggestions, or null when AI is off (offline content is used). */
 export const aiProvider = config.aiDisabled ? null : pickProvider();
 export const aiEnabled = aiProvider !== null;
-/** For logs: the model that writes Sol's replies. */
+/** For logs: the model that writes Luma's replies. */
 export const aiChatModel =
   aiProvider === "groq" ? `${config.groqChatModel} on Groq` : aiProvider === "anthropic" ? `${config.claudeModel} (Anthropic)` : null;
 export const voiceEnabled = Boolean(config.elevenLabsApiKey) && !config.voiceDisabled;

@@ -3,12 +3,12 @@ import { useSyncExternalStore } from 'react';
 import { storage } from './storage';
 
 /**
- * How the person has dressed Sol up in the secret wardrobe (hold Settings on the
+ * How the person has dressed Luma up in the secret wardrobe (hold Settings on the
  * You tab for five seconds). Kept on this phone, per account. "auto" eyes and
- * mouth follow Sol's mood, which is how Sol looks out of the box.
+ * mouth follow Luma's mood, which is how Luma looks out of the box.
  */
 export const FRUITS = [
-  { id: 'classic', label: 'Sol' },
+  { id: 'classic', label: 'Luma' },
   { id: 'apple', label: 'Apple' },
   { id: 'orange', label: 'Orange' },
   { id: 'pear', label: 'Pear' },
@@ -19,7 +19,7 @@ export const FRUITS = [
 ] as const;
 
 export const EYES = [
-  { id: 'auto', label: 'As Sol feels' },
+  { id: 'auto', label: 'As Luma feels' },
   { id: 'round', label: 'Bright' },
   { id: 'big', label: 'Sparkly' },
   { id: 'happy', label: 'Smiling' },
@@ -32,7 +32,7 @@ export const EYES = [
 ] as const;
 
 export const MOUTHS = [
-  { id: 'auto', label: 'As Sol feels' },
+  { id: 'auto', label: 'As Luma feels' },
   { id: 'smile', label: 'Smile' },
   { id: 'grin', label: 'Big grin' },
   { id: 'soft', label: 'Soft' },
@@ -76,7 +76,7 @@ export const CLASSIC_LOOK: SolLook = { fruit: 'classic', eyes: 'auto', mouth: 'a
 const pick = <T extends { id: string }>(options: readonly T[], value: unknown, fallback: T['id']): T['id'] =>
   options.some((o) => o.id === value) ? (value as T['id']) : fallback;
 
-/** Anything stored earlier (or tampered with) falls back to Sol's usual look, part by part. */
+/** Anything stored earlier (or tampered with) falls back to Luma's usual look, part by part. */
 function sanitize(raw: unknown): SolLook {
   const v = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   return {
@@ -101,7 +101,7 @@ export function useSolLook(): SolLook {
   return useSyncExternalStore(subscribe, () => current, () => current);
 }
 
-/** Loads the signed-in person's Sol (or the usual Sol when signed out). */
+/** Loads the signed-in person's Luma (or the usual Luma when signed out). */
 export async function loadSolLook(userId: string | null) {
   key = userId ? `solace.solLook.${userId}` : null;
   let next = CLASSIC_LOOK;
@@ -110,7 +110,7 @@ export async function loadSolLook(userId: string | null) {
       const raw = await storage.get(key);
       if (raw) next = sanitize(JSON.parse(raw));
     } catch {
-      // Unreadable: keep the usual Sol.
+      // Unreadable: keep the usual Luma.
     }
   }
   current = next;

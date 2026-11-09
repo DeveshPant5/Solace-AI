@@ -18,7 +18,7 @@ import { space, useTheme } from '@/theme';
 export const TIPS = {
   practices: { line: 'This is your calm toolbox. When things feel heavy, a two-minute breather is a lovely place to start.', mood: 'calm' },
   journey: { line: 'This is where I grow. Every check-in and slow breath helps me bloom. There is no rush at all.', mood: 'happy' },
-  sol: { line: 'This is where you and Sol talk. Say anything, big or small. Sol listens and remembers what matters.', mood: 'listening' },
+  sol: { line: 'This is where you and Luma talk. Say anything, big or small. Luma listens and remembers what matters.', mood: 'listening' },
   breathe: { line: 'Just follow the circle. Breathe in as it grows, and out as it softens. Nothing else to do.', mood: 'calm' },
   grounding: { line: 'Look around slowly. Tap once for each thing you notice. Take all the time you need.', mood: 'calm' },
   journal: { line: 'There are no right or wrong words here. Even one line is enough.', mood: 'listening' },
@@ -26,7 +26,7 @@ export const TIPS = {
   assessment: { line: 'A few gentle questions to notice patterns. It is not a test, and it is not a diagnosis.', mood: 'listening' },
   reminders: { line: 'Soft nudges, only when you want them. You can change or turn them off any time.', mood: 'happy' },
   tasks: { line: 'Plan a few small things for your day. I’ll give you a gentle nudge at the time you pick.', mood: 'happy' },
-  memory: { line: "This is what Sol remembers about you. You're in charge here, and can remove anything, any time.", mood: 'calm' },
+  memory: { line: "This is what Luma remembers about you. You're in charge here, and can remove anything, any time.", mood: 'calm' },
 } satisfies Record<string, { line: string; mood: PipMood }>;
 
 export type TipId = keyof typeof TIPS;

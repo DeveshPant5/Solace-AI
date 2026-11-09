@@ -14,7 +14,7 @@ import { useSolLook, type CheekChoice, type FruitId, type GlassesChoice, type So
 
 export type SolMood = 'happy' | 'calm' | 'listening' | 'concerned' | 'joyful' | 'sleepy' | 'thinking';
 
-/** Sol's colours shift gently with the person's mood (1 = very low … 5 = great). */
+/** Luma's colours shift gently with the person's mood (1 = very low … 5 = great). */
 const TINTS: Record<number, [string, string, string]> = {
   0: ['#FFC2A8', '#C9B8FF', '#9CCBF5'],
   1: ['#B9C9F2', '#A9B6EC', '#8FB2E8'],
@@ -47,7 +47,7 @@ const stroke = { stroke: INK, strokeWidth: 4.5, strokeLinecap: 'round' as const,
 type EyeStyle = 'round' | 'big' | 'happy' | 'sleepy' | 'angry' | 'worried' | 'wink' | 'hearts' | 'stars' | 'thinking';
 type MouthStyle = 'smile' | 'grin' | 'soft' | 'listen' | 'frown' | 'small' | 'smirk' | 'tongue' | 'cat' | 'open' | 'flat' | 'grumpy';
 
-/** Sol's own eyes for each mood (what "As Sol feels" means). */
+/** Luma's own eyes for each mood (what "As Luma feels" means). */
 function moodEyes(mood: SolMood): EyeStyle {
   if (mood === 'calm' || mood === 'joyful') return 'happy';
   if (mood === 'sleepy') return 'sleepy';
@@ -254,7 +254,7 @@ function Glasses({ style }: { style: GlassesChoice }) {
   );
 }
 
-/** The fruits Sol can be: colours (light to deep), the body's outline, and what grows on top. */
+/** The fruits Luma can be: colours (light to deep), the body's outline, and what grows on top. */
 const FRUIT: Record<Exclude<FruitId, 'classic'>, { colors: [string, string, string]; body: string; top: (leaf: string) => ReactNode; marks?: ReactNode }> = {
   apple: {
     colors: ['#FF9A8B', '#F2615F', '#D9474F'],
@@ -378,8 +378,8 @@ const FRUIT: Record<Exclude<FruitId, 'classic'>, { colors: [string, string, stri
 const CLASSIC_BODY = 'M100 44 C141 44 172 73 172 113 C172 153 141 180 100 180 C59 180 28 153 28 113 C28 73 59 44 100 44 Z';
 
 /**
- * Sol's little arms and feet, in the same soft colours as its body. Drawn before
- * the body, so the body covers where they join. When Sol is joyful, one hand waves.
+ * Luma's little arms and feet, in the same soft colours as its body. Drawn before
+ * the body, so the body covers where they join. When Luma is joyful, one hand waves.
  */
 function Limbs({ mood, arm, foot }: { mood: SolMood; arm: string; foot: string }) {
   const limb = { stroke: arm, strokeWidth: 10, strokeLinecap: 'round' as const, fill: 'none' };
@@ -426,7 +426,7 @@ export function Sol({
 }: {
   size?: number;
   mood?: SolMood;
-  /** Mood value 1-5 to tint Sol, or 0 for the default glow. */
+  /** Mood value 1-5 to tint Luma, or 0 for the default glow. */
   tint?: number;
   animated?: boolean;
   /** Arms and feet. On by default for larger Sols; small ones (avatars, the tab button) stay a simple face. */
@@ -488,7 +488,7 @@ export function Sol({
   }));
 
   return (
-    <View style={[{ width: size, height: size }, style]} accessibilityRole="image" accessibilityLabel="Sol, your companion">
+    <View style={[{ width: size, height: size }, style]} accessibilityRole="image" accessibilityLabel="Luma, your companion">
       <Animated.View style={[{ width: size, height: size }, motion]}>
         <Svg width={size} height={size} viewBox="0 0 200 200">
           <Defs>

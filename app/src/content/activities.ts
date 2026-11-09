@@ -29,7 +29,7 @@ export const ACTIVITY_INFO: Record<Exclude<ActivityId, 'none'>, ActivityInfo> = 
   guide_stress: { title: 'Stress reset', subtitle: 'Guide · 4 steps', icon: 'zap-off', accent: 'peach', href: '/guide/stress' },
   guide_mindfulness: { title: 'Mindfulness basics', subtitle: 'Guide · 4 steps', icon: 'eye', accent: 'sage', href: '/guide/mindfulness' },
   help_now: { title: 'Get support now', subtitle: 'Helplines and next steps', icon: 'life-buoy', accent: 'rose', href: '/help' },
-  chat: { title: 'Talk to Sol', subtitle: 'Say what’s on your mind', icon: 'message-circle', accent: 'lavender', href: '/sol' },
+  chat: { title: 'Talk to Luma', subtitle: 'Say what’s on your mind', icon: 'message-circle', accent: 'lavender', href: '/sol' },
 };
 
 export function activityInfo(id: ActivityId | undefined | null): ActivityInfo | null {

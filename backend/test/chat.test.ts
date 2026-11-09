@@ -1,4 +1,4 @@
-// End-to-end tests for chat with Sol on Claude, against a small local stand-in for
+// End-to-end tests for chat with Luma on Claude, against a small local stand-in for
 // the Anthropic Messages API (the real SDK talks to it through ANTHROPIC_BASE_URL).
 // Covers streaming, a tool call, the safety floor on a declined reply, and a
 // reply that breaks off part way.
@@ -151,7 +151,7 @@ async function chat(conversationId: string, content: string) {
     });
 }
 
-describe("chat with Sol (Claude)", () => {
+describe("chat with Luma (Claude)", () => {
   test("streams a reply, saves it, and names the conversation", async () => {
     const { json } = await api("/conversations", "POST");
     const events = await chat(json.conversation.id, "hello");

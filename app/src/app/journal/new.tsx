@@ -70,7 +70,7 @@ export default function NewJournalEntry() {
           <Card tone={c.butterSoft} style={{ gap: space.sm }}>
             <Row style={{ justifyContent: 'space-between' }}>
               <T variant="caption" color={c.inkSoft}>
-                {customPrompt ? 'A prompt from Sol' : 'Today’s prompt'}
+                {customPrompt ? 'A prompt from Luma' : 'Today’s prompt'}
               </T>
               <Row gap={space.md}>
                 <Tappable

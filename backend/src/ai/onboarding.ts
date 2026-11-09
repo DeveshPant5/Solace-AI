@@ -43,7 +43,7 @@ const REPHRASING_MAX_CHARS = 120;
 
 // ---------- Prompts ----------
 
-const PIP = `You are Pip, a little walking flower pot with a sprout on top: the seedling Sol planted for this person. Sol is the AI companion in Solace, a mental wellness app. Pip guides new people through setting up the app, then hands them over to Sol, and grows as they take care of themselves.
+const PIP = `You are Pip, a little walking flower pot with a sprout on top: the seedling Luma planted for this person. Luma is the AI companion in Solace, a mental wellness app. Pip guides new people through setting up the app, then hands them over to Luma, and grows as they take care of themselves.
 
 Everything about Solace is meant to calm the person, and so does Pip. How Pip talks (Pip's lines are spoken aloud by a text-to-speech voice):
 - One or two short, plain sentences, at most ${SAY_MAX_WORDS} words in total.
@@ -70,7 +70,7 @@ Right now the person is telling Pip what they would like a little help with. Ret
 
 const TONE_SYSTEM = `${PIP}
 
-Right now the person is choosing how Sol should talk to them. They wrote something they might say to Sol in a first chat. Write how Sol would open that first chat, replying to what they wrote, in each of three tones. Sol is warm and wise, never diagnoses, uses no emojis, markdown or dashes, and each opening is at most ${PREVIEW_MAX_WORDS} words:
+Right now the person is choosing how Luma should talk to them. They wrote something they might say to Luma in a first chat. Write how Luma would open that first chat, replying to what they wrote, in each of three tones. Luma is warm and wise, never diagnoses, uses no emojis, markdown or dashes, and each opening is at most ${PREVIEW_MAX_WORDS} words:
 - gentle: soft, validating and unhurried.
 - cheerful: warm, upbeat and encouraging, without brushing off what they said.
 - direct: calm and practical, getting to one concrete next step.
@@ -106,9 +106,9 @@ const IntentionOut = z.object({
 const ToneOut = z.object({
   concern: z.boolean(),
   say: z.string().describe(`Pip's spoken line, max ${SAY_MAX_WORDS} words`),
-  gentle: z.string().describe(`Sol's gentle opening, max ${PREVIEW_MAX_WORDS} words`),
-  cheerful: z.string().describe(`Sol's cheerful opening, max ${PREVIEW_MAX_WORDS} words`),
-  direct: z.string().describe(`Sol's direct opening, max ${PREVIEW_MAX_WORDS} words`),
+  gentle: z.string().describe(`Luma's gentle opening, max ${PREVIEW_MAX_WORDS} words`),
+  cheerful: z.string().describe(`Luma's cheerful opening, max ${PREVIEW_MAX_WORDS} words`),
+  direct: z.string().describe(`Luma's direct opening, max ${PREVIEW_MAX_WORDS} words`),
 });
 
 // ---------- Endpoints ----------
@@ -137,7 +137,7 @@ export async function assistTone(input: AssistInput): Promise<ToneResult> {
   const offline = offlineTone(input);
   if (!input.text) return offline;
 
-  const out = await structured(ToneOut, TONE_SYSTEM, promptFor(input, "What they might say to Sol:"), "onboarding", { publicCall: true });
+  const out = await structured(ToneOut, TONE_SYSTEM, promptFor(input, "What they might say to Luma:"), "onboarding", { publicCall: true });
   if (!out) return offline;
   // The keyword check caught something the model missed: use the careful offline lines.
   if (offline.concern && !out.concern) return offline;
@@ -184,8 +184,8 @@ const OFFLINE_REPHRASINGS: Record<FocusId, [string, string]> = {
 
 const HELLO_PREVIEWS: TonePreviews = {
   gentle: "Hi, I'm really glad you're here. There's no rush at all. Whenever you're ready, tell me a little about how things have been feeling.",
-  cheerful: "Hey, it's so good to meet you! I'm Sol. Let's figure out together what would make today feel a little lighter. What's on your mind?",
-  direct: "Hi, I'm Sol. Let's keep it simple: tell me the one thing weighing on you most, and we'll pick one small step to start with.",
+  cheerful: "Hey, it's so good to meet you! I'm Luma. Let's figure out together what would make today feel a little lighter. What's on your mind?",
+  direct: "Hi, I'm Luma. Let's keep it simple: tell me the one thing weighing on you most, and we'll pick one small step to start with.",
 };
 
 const REPLY_PREVIEWS: TonePreviews = {
@@ -229,9 +229,9 @@ export function offlineIntention(input: AssistInput): IntentionResult {
 export function offlineTone(input: AssistInput, concern = detectConcern(input.text)): ToneResult {
   if (concern) return { say: concernSay(input.name), previews: { ...CONCERN_PREVIEWS }, concern, source: "offline" };
   if (!input.text) {
-    return { say: "Here's how Sol might say hello. Pick the voice that feels most like home.", previews: { ...HELLO_PREVIEWS }, concern, source: "offline" };
+    return { say: "Here's how Luma might say hello. Pick the voice that feels most like home.", previews: { ...HELLO_PREVIEWS }, concern, source: "offline" };
   }
-  return { say: withName("Here's how Sol might answer that", input.name, ". Which one feels most like you?"), previews: { ...REPLY_PREVIEWS }, concern, source: "offline" };
+  return { say: withName("Here's how Luma might answer that", input.name, ". Which one feels most like you?"), previews: { ...REPLY_PREVIEWS }, concern, source: "offline" };
 }
 
 function concernSay(name?: string) {

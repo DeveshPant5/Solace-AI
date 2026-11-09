@@ -31,7 +31,7 @@ export const GUIDES: Record<string, Guide> = {
       { title: 'Label the thought', body: 'Try "I notice I’m having the thought that…" before the worry. It puts a little distance between you and the story.' },
       { title: 'Cool down', body: 'Splash cold water on your face or hold something cold for 30 seconds. Cold slows your heart rate within moments.' },
     ],
-    closing: 'Still spiralling? Talk it through with Sol, or reach out to someone you trust.',
+    closing: 'Still spiralling? Talk it through with Luma, or reach out to someone you trust.',
   },
   low_mood: {
     id: 'low_mood',
@@ -73,7 +73,7 @@ export const GUIDES: Record<string, Guide> = {
       { title: 'Collect small proof', body: 'Each night, write three things you did, however small. Over time it builds evidence your critic can’t ignore.', activity: 'journal' },
       { title: 'Curate your feed', body: 'Mute a few accounts that leave you feeling smaller. What you see every day shapes how you see yourself.' },
     ],
-    closing: 'Want help rewriting a harsh thought? Sol can work through it with you.',
+    closing: 'Want help rewriting a harsh thought? Luma can work through it with you.',
   },
   stress: {
     id: 'stress',

@@ -41,7 +41,7 @@ export default function SignIn() {
           Welcome back
         </T>
         <T variant="body" color={c.inkSoft} center>
-          Sol missed you.
+          Luma missed you.
         </T>
       </View>
       <View style={{ gap: space.md }}>

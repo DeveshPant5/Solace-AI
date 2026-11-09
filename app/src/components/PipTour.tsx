@@ -16,7 +16,7 @@ import { stopSpeaking } from '@/lib/voice';
 import { space, useTheme } from '@/theme';
 
 /**
- * A short, unhurried first-run tour of Home with Pip: Pip introduces Sol,
+ * A short, unhurried first-run tour of Home with Pip: Pip introduces Luma,
  * points out the three things worth knowing, and says goodbye. Shown once
  * per account on this device; You → "Take the tour with Pip" replays it.
  */
@@ -25,9 +25,9 @@ type Stop = { line: string; mood: PipMood; arrow?: 'up' | 'down'; arrowLeft?: bo
 
 const STOPS: Stop[] = [
   { line: "Look, I've grown into a little tree. Thank you for taking this moment for yourself.", mood: 'happy', grown: true },
-  { line: 'This is Sol, who planted me just for you. Sol is here whenever you want to talk, day or night.', mood: 'happy', meetSol: true, wave: true },
+  { line: 'This is Luma, who planted me just for you. Luma is here whenever you want to talk, day or night.', mood: 'happy', meetSol: true, wave: true },
   { line: 'Start here each day. Tap how you feel up top. It only takes a moment.', mood: 'curious', arrow: 'up' },
-  { line: 'Sol lives in the glowing button down here. Tap it any time you want to talk things through.', mood: 'happy', arrow: 'down' },
+  { line: 'Luma lives in the glowing button down here. Tap it any time you want to talk things through.', mood: 'happy', arrow: 'down' },
   { line: 'Practices has calm tools for hard moments. Journey is where you can watch me grow.', mood: 'thinking', arrow: 'down', arrowLeft: true },
   { line: "That's everything for now. I'll share a little tip when you visit somewhere new.", mood: 'calm', wave: true },
 ];

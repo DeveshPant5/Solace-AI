@@ -50,7 +50,7 @@ export default function Welcome() {
           wave
           backdrop={<WindowScene sill={SILL} />}
           style={{ flex: 1, justifyContent: 'space-between', paddingTop: 44, paddingHorizontal: space.xxl, paddingBottom: SILL - FEET }}
-          line="Hi, I'm Pip, a little sprout Sol planted just for you. I'll help you set up your cosy corner. It only takes a minute."
+          line="Hi, I'm Pip, a little sprout Luma planted just for you. I'll help you set up your cosy corner. It only takes a minute."
         />
       </View>
 

@@ -131,7 +131,7 @@ export default function GuideScreen() {
       <Card style={{ marginTop: space.xxl, gap: space.md }}>
         <T variant="body">{guide.closing}</T>
         <Row gap={space.sm}>
-          <Button title="Talk to Sol" icon="message-circle" small onPress={() => router.push('/sol')} style={{ flex: 1 }} />
+          <Button title="Talk to Luma" icon="message-circle" small onPress={() => router.push('/sol')} style={{ flex: 1 }} />
           <Button title="Get support" icon="life-buoy" kind="secondary" small onPress={() => router.push('/help')} style={{ flex: 1 }} />
         </Row>
       </Card>

@@ -108,7 +108,7 @@ function greetingFor(hour: number) {
   return 'Good evening,';
 }
 
-/** Who you are here: Sol, your name, your time together, a few gentle numbers and what you're tending to. */
+/** Who you are here: Luma, your name, your time together, a few gentle numbers and what you're tending to. */
 function ProfileCard() {
   const c = useTheme();
   const { user } = useAuth();
@@ -191,7 +191,7 @@ function ProfileCard() {
 const HOLD_MS = 5000;
 
 /**
- * Settings, with a secret: holding it for five seconds opens Sol's wardrobe.
+ * Settings, with a secret: holding it for five seconds opens Luma's wardrobe.
  * While it's held the icon slowly turns and a soft tick comes each second; a
  * short tap just opens Settings.
  */
@@ -260,7 +260,7 @@ export default function You() {
         <MenuRow icon="bell" title="Reminders" href="/reminders" bg={c.butterSoft} fg={c.butter} />
         <MenuRow
           icon="bookmark"
-          title="What Sol remembers"
+          title="What Luma remembers"
           subtitle={memoryOn ? undefined : 'Memory is off'}
           href="/memory"
           bg={c.lavenderSoft}

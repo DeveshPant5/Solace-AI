@@ -109,7 +109,7 @@ const chatBurstLimit = userRateLimit({
 const chatDailyLimit = userRateLimit({
   limit: 200,
   windowMs: 24 * 60 * MINUTE,
-  message: "Sol needs some rest after a long day of talking. You can pick this up again tomorrow.",
+  message: "Luma needs some rest after a long day of talking. You can pick this up again tomorrow.",
 });
 /** Replies being written right now, per person. */
 const activeTurns = new Map<string, number>();
@@ -117,19 +117,19 @@ const MAX_ACTIVE_TURNS = 2;
 
 const SIGNAL_GRACE_MS = 10_000;
 
-const RESTING = "Sol is resting for today. Your practices and journal are still here, and Sol will be back tomorrow.";
+const RESTING = "Luma is resting for today. Your practices and journal are still here, and Luma will be back tomorrow.";
 
 /** Open chat streams, so shutdown can close them politely. */
 export const openStreams = new Set<Response>();
 
 /**
- * Sends a message and streams Sol's reply as Server-Sent Events:
+ * Sends a message and streams Luma's reply as Server-Sent Events:
  *   user      {id, createdAt}                 the stored user message
  *   delta     {text}                          reply text as it's written
  *   replace   {text}                          replace the reply text so far
  *   suggestion {activity, reason, journalPrompt?}
- *   memory    {id, content}                   Sol saved something to memory
- *   reminder  {id, title, body, hour, minute} Sol created a reminder
+ *   memory    {id, content}                   Luma saved something to memory
+ *   reminder  {id, title, body, hour, minute} Luma created a reminder
  *   signal    {mood, emotions, risk}          detected mood of the user message
  *   title     {title}                         conversation title
  *   done      {message}                       the stored assistant message
@@ -139,18 +139,18 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
   const user = currentUser(req);
   const convo = await ownedConversation(user.id, String(req.params.id ?? ""));
   const { content } = SendMessage.parse(req.body);
-  // A message that sounds unsafe is always answered with real help, even when Sol can't reply right now.
+  // A message that sounds unsafe is always answered with real help, even when Luma can't reply right now.
   const keywordOnly = combineRisk(null, content);
   const unavailable = !aiEnabled
-    ? new HttpError(503, "Sol isn't connected yet. Add a Groq API key (free) or an Anthropic API key to the backend to start chatting.", "ai_unavailable")
+    ? new HttpError(503, "Luma isn't connected yet. Add a Groq API key (free) or an Anthropic API key to the backend to start chatting.", "ai_unavailable")
     : isShuttingDown()
-      ? new HttpError(503, "Sol is taking a short pause while the server restarts. Please try again in a moment.", "restarting")
+      ? new HttpError(503, "Luma is taking a short pause while the server restarts. Please try again in a moment.", "restarting")
       : !aiAllowed({ userId: user.id })
         ? new HttpError(503, RESTING, "ai_resting")
         : null;
   if (unavailable && keywordOnly === "none") throw unavailable;
   if (!unavailable && (activeTurns.get(user.id) ?? 0) >= MAX_ACTIVE_TURNS) {
-    throw new HttpError(429, "Sol is still finishing a reply. Give it a moment, then send again.", "busy");
+    throw new HttpError(429, "Luma is still finishing a reply. Give it a moment, then send again.", "busy");
   }
 
   activeTurns.set(user.id, (activeTurns.get(user.id) ?? 0) + 1);
@@ -195,7 +195,7 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
       await saveSignal(userMessage.id, latest.signal);
     }
 
-    // Sol can't reply right now (AI off, resting or restarting), but this message needs an answer.
+    // Luma can't reply right now (AI off, resting or restarting), but this message needs an answer.
     if (unavailable) {
       await sendSafetyReply(convo.id, keywordOnly, emit);
       return;
@@ -273,7 +273,7 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
         await sendSafetyReply(convo.id, risk, emit);
         return;
       }
-      // Keep whatever Sol had already written, marked as unfinished, so the conversation reads sensibly.
+      // Keep whatever Luma had already written, marked as unfinished, so the conversation reads sensibly.
       if (turn.text.trim()) {
         await query("INSERT INTO messages (conversation_id, role, content, meta) VALUES ($1, 'assistant', $2, $3)", [
           convo.id,
@@ -284,12 +284,12 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
       const kind = aiErrorKind(err);
       emit("error", {
         message: shutdownSignal.aborted
-          ? "Sol is taking a short pause while the server restarts. Please try again in a moment."
+          ? "Luma is taking a short pause while the server restarts. Please try again in a moment."
           : kind === "daily_limit"
             ? RESTING
             : kind === "busy"
-              ? "Sol is catching up on a lot of messages. Please try again in a minute."
-              : "Sol couldn't reply just now. Please try again in a moment.",
+              ? "Luma is catching up on a lot of messages. Please try again in a minute."
+              : "Luma couldn't reply just now. Please try again in a moment.",
       });
     }
   } finally {
@@ -329,7 +329,7 @@ async function loadHistory(conversationId: string) {
   }
   const recentText = rows
     .slice(-7, -1)
-    .map((m) => `${m.role === "user" ? "User" : "Sol"}: ${m.content.slice(0, 400)}`)
+    .map((m) => `${m.role === "user" ? "User" : "Luma"}: ${m.content.slice(0, 400)}`)
     .join("\n");
   return { history, recentText };
 }
@@ -347,7 +347,7 @@ async function saveSignal(messageId: string, signal: MessageSignal) {
   );
 }
 
-/** A caring reply with the help card, for an unsafe-sounding message when Sol can't answer. */
+/** A caring reply with the help card, for an unsafe-sounding message when Luma can't answer. */
 async function sendSafetyReply(conversationId: string, risk: Risk, emit: Emit) {
   const meta = { suggestions: [CRISIS_SUGGESTION], safety: risk, offline: true };
   const saved = await queryOne<{ id: string; created_at: string }>(

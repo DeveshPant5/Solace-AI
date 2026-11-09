@@ -18,7 +18,7 @@ import { T } from '@/components/ui';
 import { fonts, useTheme } from '@/theme';
 
 /**
- * Opening moment shown over the app on launch: Sol rises like the morning sun
+ * Opening moment shown over the app on launch: Luma rises like the morning sun
  * through a warm sky, the wordmark settles in, then everything fades away.
  */
 const SKY = {

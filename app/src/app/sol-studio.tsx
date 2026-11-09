@@ -64,7 +64,7 @@ function OptionTile({ label, selected, onPress, children }: { label: string; sel
   );
 }
 
-/** One row of choices for one part of Sol, each shown on a little Sol of its own. */
+/** One row of choices for one part of Luma, each shown on a little Luma of its own. */
 function Shelf<K extends keyof SolLook>({
   title,
   part,
@@ -93,7 +93,7 @@ function Shelf<K extends keyof SolLook>({
         {options.map((o) => (
           <OptionTile key={String(o.id)} label={o.label} selected={look[part] === o.id} onPress={() => setSolLook({ ...look, [part]: o.id })}>
             {zoom ? (
-              // Sol's face sits at about (50%, 57%) of the drawing; centre it in the tile.
+              // Luma's face sits at about (50%, 57%) of the drawing; centre it in the tile.
               <View style={{ position: 'absolute', left: 39 - FACE_ZOOM / 2, top: 39 - FACE_ZOOM * 0.57 }}>
                 <Sol size={FACE_ZOOM} mood={mood} look={{ ...look, [part]: o.id }} animated={false} limbs={false} />
               </View>
@@ -109,7 +109,7 @@ function Shelf<K extends keyof SolLook>({
 
 /**
  * The secret wardrobe: hold Settings on the You tab for five seconds. Every
- * change shows on Sol everywhere straight away and stays on this phone.
+ * change shows on Luma everywhere straight away and stays on this phone.
  */
 export default function SolStudio() {
   const c = useTheme();
@@ -118,10 +118,10 @@ export default function SolStudio() {
 
   return (
     <Screen>
-      <Header title="Sol’s wardrobe" />
+      <Header title="Luma’s wardrobe" />
       <Animated.View entering={FadeInDown.duration(500)}>
         <T variant="quote" color={c.inkSoft} center style={{ fontSize: 18, lineHeight: 26, marginTop: space.sm }}>
-          You found a secret. Make Sol your own.
+          You found a secret. Make Luma your own.
         </T>
 
         <LinearGradient
@@ -156,7 +156,7 @@ export default function SolStudio() {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Button title="Classic Sol" kind="ghost" icon="rotate-ccw" disabled={isClassic(look)} onPress={() => setSolLook(CLASSIC_LOOK)} />
+          <Button title="Classic Luma" kind="ghost" icon="rotate-ccw" disabled={isClassic(look)} onPress={() => setSolLook(CLASSIC_LOOK)} />
         </View>
       </Row>
     </Screen>

@@ -99,7 +99,7 @@ export const FALLBACK_MOVES: Record<AssessmentKind, Record<string, { title: stri
     ],
     mild: [
       { title: "Plan one small joy", body: "Pick something tiny you usually enjoy and put it in today.", activity: "none" },
-      { title: "Talk it through", body: "Tell Sol what has felt heavy lately.", activity: "chat" },
+      { title: "Talk it through", body: "Tell Luma what has felt heavy lately.", activity: "chat" },
       { title: "Get some daylight", body: "Ten minutes of morning light helps steady your energy.", activity: "none" },
     ],
     moderate: [
@@ -109,7 +109,7 @@ export const FALLBACK_MOVES: Record<AssessmentKind, Record<string, { title: stri
     ],
     high: [
       { title: "You don't have to carry this alone", body: "Talking to a doctor or counsellor can make a real difference.", activity: "help_now" },
-      { title: "Talk to Sol now", body: "Say what's on your mind. No judgement.", activity: "chat" },
+      { title: "Talk to Luma now", body: "Say what's on your mind. No judgement.", activity: "chat" },
       { title: "Breathe for a minute", body: "A slow breath can take the edge off right now.", activity: "breathing_calm" },
     ],
   },
@@ -127,7 +127,7 @@ export const FALLBACK_MOVES: Record<AssessmentKind, Record<string, { title: stri
     moderate: [
       { title: "Long exhale breathing", body: "Exhaling longer than you inhale tells your body it's safe.", activity: "breathing_478" },
       { title: "Read: calming anxiety", body: "Tools for when your mind won't settle.", activity: "guide_anxiety" },
-      { title: "Name the thought", body: "Tell Sol the worry that keeps looping.", activity: "chat" },
+      { title: "Name the thought", body: "Tell Luma the worry that keeps looping.", activity: "chat" },
     ],
     high: [
       { title: "Get support", body: "A doctor or counsellor can help with anxiety this strong.", activity: "help_now" },
@@ -148,7 +148,7 @@ export const FALLBACK_MOVES: Record<AssessmentKind, Record<string, { title: stri
     ],
     moderate: [
       { title: "Catch the critic", body: "Notice 'always' and 'never' in your self-talk.", activity: "guide_self_esteem" },
-      { title: "Say it out loud", body: "Tell Sol one thing you're proud of, however small.", activity: "chat" },
+      { title: "Say it out loud", body: "Tell Luma one thing you're proud of, however small.", activity: "chat" },
       { title: "Affirm it", body: "Read today's affirmation slowly, twice.", activity: "none" },
     ],
     high: [

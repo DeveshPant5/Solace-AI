@@ -163,7 +163,7 @@ export default function Reminders() {
                     ) : null}
                     {r.createdBy === 'sol' && (
                       <T variant="small" color={c.primary} style={{ fontSize: 12 }}>
-                        Set by Sol
+                        Set by Luma
                       </T>
                     )}
                   </View>
@@ -200,7 +200,7 @@ export default function Reminders() {
           <Button title="Add" small icon="plus" onPress={add} loading={adding} disabled={!newTitle.trim()} />
         </Row>
         <T variant="small" color={c.inkFaint} style={{ fontSize: 12 }}>
-          Tip: you can also ask Sol to remind you of something.
+          Tip: you can also ask Luma to remind you of something.
         </T>
       </Card>
 

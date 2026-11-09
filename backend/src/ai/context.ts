@@ -32,7 +32,7 @@ function localDate(date: string | Date, timezone: string) {
 const field = (text: string, max: number) => clip(stripTags(oneLine(text), [CONTEXT_TAG]), max);
 
 /**
- * Everything Sol knows about the person, as a compact text block wrapped in
+ * Everything Luma knows about the person, as a compact text block wrapped in
  * <person_context>. Built fresh for each request from the database, so the person
  * stays in control: deleted memories and disabled memory are respected immediately.
  */

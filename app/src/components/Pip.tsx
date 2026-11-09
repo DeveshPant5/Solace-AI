@@ -13,7 +13,7 @@ import Animated, {
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 /**
- * Pip: a little walking flower pot, the seedling Sol planted for you.
+ * Pip: a little walking flower pot, the seedling Luma planted for you.
  *
  * The plant on top grows as the person takes care of themselves:
  *   onboarding  0 shoot · 1 sprout · 2 seedling · 3 bud · 4 flower · 5 sapling · 6 young tree

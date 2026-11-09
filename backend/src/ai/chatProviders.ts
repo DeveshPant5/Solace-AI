@@ -5,7 +5,7 @@ import { aiProvider, config } from "../config.js";
 import { recordAiOutput } from "../lib/budget.js";
 import { anthropic, groq, groqReasoning, MODEL, withGroqModels } from "./client.js";
 
-// One model request at a time, for Sol's tool loop (ai/companion.ts), behind the
+// One model request at a time, for Luma's tool loop (ai/companion.ts), behind the
 // same small interface for each AI service.
 
 export interface ToolSpec {
@@ -55,7 +55,7 @@ export interface SessionOptions {
 
 /**
  * Per-provider sizing. Groq's free tier allows about 8,000 tokens a minute per
- * model, so prompts there are kept small, and once a reply is written Sol doesn't
+ * model, so prompts there are kept small, and once a reply is written Luma doesn't
  * spend another request just to acknowledge its tool results.
  */
 export const chatProfile =
@@ -92,7 +92,7 @@ class AnthropicSession implements ChatSession {
     const stream = anthropic!.beta.messages.stream(
       {
         model: MODEL,
-        // Sol's replies are a few sentences; this leaves room for a long one plus thinking.
+        // Luma's replies are a few sentences; this leaves room for a long one plus thinking.
         max_tokens: 8192,
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",

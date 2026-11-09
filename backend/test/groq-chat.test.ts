@@ -1,4 +1,4 @@
-// End-to-end tests for Sol on Groq, against a small local stand-in for Groq's
+// End-to-end tests for Luma on Groq, against a small local stand-in for Groq's
 // OpenAI-style chat completions API (the real SDK talks to it through GROQ_BASE_URL).
 // Covers streaming, structured JSON calls, tool calls with and without a written
 // reply, and the free tier's rate limits.
@@ -179,7 +179,7 @@ async function chat(conversationId: string, content: string) {
 const chatRequests = () => requests.filter((r) => r.stream);
 const jsonRequests = () => requests.filter((r) => !r.stream);
 
-describe("chat with Sol (Groq)", () => {
+describe("chat with Luma (Groq)", () => {
   test("streams a reply with the chat model and runs the JSON jobs on the fast model", async () => {
     const { json } = await api("/conversations", "POST");
     const events = await chat(json.conversation.id, "hello");
@@ -193,7 +193,7 @@ describe("chat with Sol (Groq)", () => {
     assert.equal(chatRequest!.reasoning_effort, "low");
     assert.equal(chatRequest!.include_reasoning, false);
     assert.equal(chatRequest!.messages[0].role, "system");
-    assert.match(chatRequest!.messages[0].content, /You are Sol/);
+    assert.match(chatRequest!.messages[0].content, /You are Luma/);
     assert.match(chatRequest!.messages[0].content, /<person_context>/);
     assert.ok(chatRequest!.tools.some((t: Json) => t.type === "function" && t.function.name === "create_reminder"));
     assert.ok(chatRequest!.messages.every((m: Json) => !("name" in m)), "Groq rejects messages[].name");

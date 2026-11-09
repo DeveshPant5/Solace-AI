@@ -22,7 +22,7 @@ async function migrateWithRetry(attempts = 10) {
 await migrateWithRetry();
 const server = createApp().listen(config.port, "0.0.0.0", () => {
   console.log(`Solace API listening on http://0.0.0.0:${config.port}`);
-  console.log(aiChatModel ? `AI companion on: ${aiChatModel}` : "AI companion OFF: set GROQ_API_KEY (free) or ANTHROPIC_API_KEY in backend/.env to enable Sol");
+  console.log(aiChatModel ? `AI companion on: ${aiChatModel}` : "AI companion OFF: set GROQ_API_KEY (free) or ANTHROPIC_API_KEY in backend/.env to enable Luma");
   if (voiceEnabled) console.log("Pip's voice on (ElevenLabs)");
   if (config.trustProxy === 0 && config.isProduction) {
     console.warn("TRUST_PROXY is 0: if this runs behind a proxy (Render, Fly, a load balancer), set TRUST_PROXY=1 so rate limits see real client addresses.");

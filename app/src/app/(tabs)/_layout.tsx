@@ -12,7 +12,7 @@ import { fonts, radius, shadow, useTheme } from '@/theme';
 const TABS: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Home', icon: 'home' },
   practices: { label: 'Practices', icon: 'feather' },
-  sol: { label: 'Sol', icon: 'message-circle' },
+  sol: { label: 'Luma', icon: 'message-circle' },
   journey: { label: 'Journey', icon: 'trending-up' },
   you: { label: 'You', icon: 'user' },
 };
@@ -42,7 +42,7 @@ function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
                 onPress={onPress}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: focused }}
-                accessibilityLabel="Talk to Sol"
+                accessibilityLabel="Talk to Luma"
                 style={styles.item}
               >
                 <View style={[styles.solButton, { backgroundColor: focused ? c.primary : c.primarySoft }]}>

@@ -96,7 +96,7 @@ export default function Personalize() {
     return () => clearTimeout(t);
   }, [intention, step, listening, askPip]);
 
-  // Get Sol's sample replies ready while they pick focus areas and a time.
+  // Get Luma's sample replies ready while they pick focus areas and a time.
   const prepareTones = () => {
     const text = intention.trim();
     if (!text || text === toneFor.current) return;
@@ -133,7 +133,7 @@ export default function Personalize() {
   const pip: { line: string; mood: PipMood } = (() => {
     switch (step) {
       case 0:
-        return { line: 'First things first. What would you like Sol and me to call you?', mood: 'curious' };
+        return { line: 'First things first. What would you like Luma and me to call you?', mood: 'curious' };
       case 1:
         if (concern && help) return { line: help.say, mood: 'listening' };
         return {
@@ -144,10 +144,10 @@ export default function Personalize() {
         if (help?.say && !help.concern && suggested.length) return { line: help.say, mood: 'happy' };
         return { line: 'What would you like a little support with? Pick as many as you like.', mood: 'happy' };
       case 3:
-        return { line: 'When would a gentle check-in suit you each day? Sol will send a soft nudge.', mood: 'calm' };
+        return { line: 'When would a gentle check-in suit you each day? Luma will send a soft nudge.', mood: 'calm' };
       default:
         return {
-          line: toneHelp?.source === 'ai' ? "Last one. Here's how Sol might answer what you told me. Which feels right?" : 'Last one. How would you like Sol to talk with you?',
+          line: toneHelp?.source === 'ai' ? "Last one. Here's how Luma might answer what you told me. Which feels right?" : 'Last one. How would you like Luma to talk with you?',
           mood: 'happy',
         };
     }
@@ -280,7 +280,7 @@ export default function Personalize() {
             )}
 
             <T variant="small" color={c.inkFaint}>
-              Only Pip and Sol see this. It helps them understand where to start.
+              Only Pip and Luma see this. It helps them understand where to start.
             </T>
           </>
         )}

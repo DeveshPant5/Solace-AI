@@ -145,7 +145,7 @@ export default function Assessment() {
       <Screen scroll={false} contentStyle={{ alignItems: 'center', justifyContent: 'center', gap: space.md }}>
         <Sol size={140} mood="thinking" />
         <T variant="heading" center>
-          Sol is reading your answers…
+          Luma is reading your answers…
         </T>
       </Screen>
     );

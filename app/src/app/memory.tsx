@@ -35,22 +35,22 @@ export default function MemoryScreen() {
   };
 
   const forgetAll = async () => {
-    if (!(await confirm('Forget everything?', 'Sol will forget everything listed here. Your conversations stay unless you delete them.', 'Forget all'))) return;
+    if (!(await confirm('Forget everything?', 'Luma will forget everything listed here. Your conversations stay unless you delete them.', 'Forget all'))) return;
     setData({ memories: [] });
     await api('/memories', { method: 'DELETE' }).catch(() => reload());
   };
 
   return (
     <Screen>
-      <Header title="What Sol remembers" />
+      <Header title="What Luma remembers" />
       <PipTip id="memory" />
       <Card style={{ gap: space.md }}>
         <Row gap={space.md}>
           <Sol size={56} mood={enabled ? 'happy' : 'sleepy'} animated={false} />
           <View style={{ flex: 1 }}>
-            <T variant="bodyStrong">Let Sol remember</T>
+            <T variant="bodyStrong">Let Luma remember</T>
             <T variant="small" color={c.inkSoft}>
-              Sol keeps short notes about what matters to you, so you don’t have to repeat yourself.
+              Luma keeps short notes about what matters to you, so you don’t have to repeat yourself.
             </T>
           </View>
           <Switch
@@ -58,12 +58,12 @@ export default function MemoryScreen() {
             onValueChange={(value) => void updateUser({ preferences: { memoryEnabled: value } })}
             trackColor={{ true: c.primary, false: c.line }}
             thumbColor="#FFFFFF"
-            accessibilityLabel="Let Sol remember"
+            accessibilityLabel="Let Luma remember"
           />
         </Row>
         {!enabled && (
           <T variant="small" color={c.inkSoft}>
-            Memory is off. Sol won’t save new notes or use past conversations, check-in notes or journal entries in new chats.
+            Memory is off. Luma won’t save new notes or use past conversations, check-in notes or journal entries in new chats.
           </T>
         )}
       </Card>
@@ -74,7 +74,7 @@ export default function MemoryScreen() {
         </View>
       )}
       {data && data.memories.length === 0 && (
-        <EmptyState icon="bookmark" title="Nothing saved yet" body="As you talk, Sol will note things like important people, upcoming events and what helps you." />
+        <EmptyState icon="bookmark" title="Nothing saved yet" body="As you talk, Luma will note things like important people, upcoming events and what helps you." />
       )}
 
       <View style={{ gap: space.sm, marginTop: space.lg }}>

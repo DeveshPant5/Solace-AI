@@ -38,7 +38,7 @@ function RootNavigator() {
   });
   const ready = (fontsLoaded || !!fontError) && status !== 'loading' && themeLoaded;
   useNotificationRouting(ready && status === 'signedIn');
-  // The person's own Sol, if they've found the wardrobe.
+  // The person's own Luma, if they've found the wardrobe.
   useEffect(() => {
     void loadSolLook(user?.id ?? null);
   }, [user?.id]);

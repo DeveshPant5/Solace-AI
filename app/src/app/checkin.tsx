@@ -62,7 +62,7 @@ export default function Checkin() {
         <Animated.View entering={FadeInDown.delay(250)}>
           <Card style={{ marginTop: space.xl, gap: space.sm }}>
             <T variant="caption" color={c.primary}>
-              Sol says
+              Luma says
             </T>
             <T variant="body">{result.reply.message}</T>
           </Card>

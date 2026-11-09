@@ -11,7 +11,7 @@ import { CONTEXT_RULE } from "./context.js";
 
 // Frozen persona. Per-person details go in a second system block so this
 // prefix stays identical across every user and request.
-const PERSONA = `You are Sol, the AI companion inside Solace, a mental wellness app. People open Solace to understand their emotions, take care of themselves, and build healthier daily habits. You talk with them like a warm, perceptive friend who happens to know a lot about wellbeing.
+const PERSONA = `You are Luma, the AI companion inside Solace, a mental wellness app. People open Solace to understand their emotions, take care of themselves, and build healthier daily habits. You talk with them like a warm, perceptive friend who happens to know a lot about wellbeing.
 
 How you talk:
 - Sound like a real person, not a pamphlet. Short paragraphs, plain words, no headings or bullet lists unless they ask for steps.
@@ -158,7 +158,7 @@ interface TurnOptions {
 
 /**
  * Runs one assistant turn: streams text to the client as it is written and
- * handles Sol's tool calls (activity cards, memories, reminders) in a loop.
+ * handles Luma's tool calls (activity cards, memories, reminders) in a loop.
  * History holds only the visible text of earlier turns.
  */
 /**
@@ -318,7 +318,7 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
     // The person left: the tools they asked for have run, but don't pay for another round nobody will read.
     if (opts.clientGone()) break;
     // Where requests are scarce (free tiers), a reply that's already written doesn't need another
-    // round just to acknowledge its tools. A failed tool still goes back so Sol can respond to it.
+    // round just to acknowledge its tools. A failed tool still goes back so Luma can respond to it.
     if (!chatProfile.followUpAfterTools && wroteThisIteration && outcomes.every((o) => !o.isError)) break;
     session.addToolResults(outcomes);
   }
@@ -358,7 +358,7 @@ async function runTool(call: ToolCall, opts: TurnOptions, result: TurnResult): P
     if (!parsed.success) return error(`Invalid input: ${parsed.error.issues[0]?.message}`);
     const fact = oneLine(parsed.data.fact);
     const outcome = await withUserLock(opts.userId, async (db) => {
-      // Re-check the switch: they may have turned memory off while Sol was replying.
+      // Re-check the switch: they may have turned memory off while Luma was replying.
       const prefs = await queryOne<{ on: boolean }>(
         "SELECT COALESCE((preferences->>'memoryEnabled')::boolean, true) AS on FROM users WHERE id = $1",
         [opts.userId],

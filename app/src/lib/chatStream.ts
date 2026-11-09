@@ -31,7 +31,7 @@ function utf8Decoder() {
 }
 
 /**
- * Sends a chat message and reads Sol's reply as Server-Sent Events.
+ * Sends a chat message and reads Luma's reply as Server-Sent Events.
  * Resolves when the stream ends.
  */
 export async function streamChat(conversationId: string, content: string, onEvent: StreamHandler, signal?: AbortSignal) {
@@ -45,11 +45,11 @@ export async function streamChat(conversationId: string, content: string, onEven
       signal,
     });
   } catch {
-    throw new ApiError(0, "Can't reach Sol right now. Check your connection and try again.", 'network');
+    throw new ApiError(0, "Can't reach Luma right now. Check your connection and try again.", 'network');
   }
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new ApiError(response.status, data?.error?.message ?? 'Sol couldn’t reply just now.', data?.error?.code ?? 'error');
+    throw new ApiError(response.status, data?.error?.message ?? 'Luma couldn’t reply just now.', data?.error?.code ?? 'error');
   }
 
   const dispatch = (block: string) => {

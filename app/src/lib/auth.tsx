@@ -8,7 +8,7 @@ const TOKEN_KEY = 'solace.token';
 const ONBOARDING_KEY = 'solace.onboarding';
 
 export interface OnboardingAnswers {
-  /** What Sol and Pip should call them; prefills sign-up. */
+  /** What Luma and Pip should call them; prefills sign-up. */
   name?: string;
   focus: string[];
   intention?: string;

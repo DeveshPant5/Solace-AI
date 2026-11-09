@@ -1,4 +1,4 @@
-// Activities the app can open. Sol (the AI companion) and the AI-written
+// Activities the app can open. Luma (the AI companion) and the AI-written
 // suggestions may only point at these IDs; the app maps each to a screen.
 export const ACTIVITIES = {
   breathing_calm: "Calm breathing (5s in, 5s out) for 2 minutes. Good for general stress.",

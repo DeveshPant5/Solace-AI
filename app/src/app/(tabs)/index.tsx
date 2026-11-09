@@ -33,7 +33,7 @@ function greeting() {
 }
 
 const QUICK: { title: string; sub: string; icon: IconName; accent: Accent; href: Parameters<typeof router.push>[0] }[] = [
-  { title: 'Talk to Sol', sub: 'Talk it through', icon: 'message-circle', accent: 'lavender', href: '/sol' },
+  { title: 'Talk to Luma', sub: 'Talk it through', icon: 'message-circle', accent: 'lavender', href: '/sol' },
   { title: 'Breathe', sub: '2-min reset', icon: 'wind', accent: 'sky', href: '/breathe/calm' },
   { title: 'Journal', sub: 'Untangle thoughts', icon: 'feather', accent: 'butter', href: '/journal/new' },
   { title: 'Check-ins', sub: 'Know yourself', icon: 'clipboard', accent: 'sage', href: '/practices' },
@@ -277,7 +277,7 @@ export default function Home() {
                 <IconBadge icon="message-circle" bg={c.lavenderSoft} fg={c.primary} />
                 <View style={{ flex: 1 }}>
                   <T variant="bodyStrong" numberOfLines={1}>
-                    {data.lastConversation.title ?? 'Your last chat with Sol'}
+                    {data.lastConversation.title ?? 'Your last chat with Luma'}
                   </T>
                   <T variant="small" color={c.inkSoft}>
                     {new Date(data.lastConversation.updatedAt).toLocaleDateString(undefined, { weekday: 'long' })}

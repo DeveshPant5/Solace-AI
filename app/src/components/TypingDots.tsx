@@ -13,7 +13,7 @@ function Dot({ delay, color }: { delay: number; color: string }) {
 
 export function TypingDots({ color }: { color: string }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 5, paddingVertical: 6 }} accessibilityLabel="Sol is typing">
+    <View style={{ flexDirection: 'row', gap: 5, paddingVertical: 6 }} accessibilityLabel="Luma is typing">
       <Dot delay={0} color={color} />
       <Dot delay={150} color={color} />
       <Dot delay={300} color={color} />

@@ -114,7 +114,7 @@ journalRouter.delete("/:id", async (req, res) => {
   res.status(204).end();
 });
 
-// ---------------- Memories (what Sol remembers) ----------------
+// ---------------- Memories (what Luma remembers) ----------------
 
 export const memoriesRouter = Router();
 

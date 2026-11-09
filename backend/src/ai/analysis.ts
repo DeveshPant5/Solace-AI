@@ -74,7 +74,7 @@ export type DailyCard = z.infer<typeof DailyCard>;
 export async function generateDailyCard(context: string, caller: AiCaller = {}): Promise<DailyCard | null> {
   const out = await structured(
     DailyCard,
-    `You write the daily card in Solace, a mental wellness app: one personal affirmation and one gentle focus for today. Ground both in what you know about the person (recent moods, check-ins, what they want help with, things they've shared). Avoid clichés and toxic positivity. If you know little, keep it simple and welcoming.\n\n${CONTEXT_RULE}\n\nActivities:\n${ACTIVITY_LIST_FOR_PROMPT}\n- chat: talk to Sol, the AI companion`,
+    `You write the daily card in Solace, a mental wellness app: one personal affirmation and one gentle focus for today. Ground both in what you know about the person (recent moods, check-ins, what they want help with, things they've shared). Avoid clichés and toxic positivity. If you know little, keep it simple and welcoming.\n\n${CONTEXT_RULE}\n\nActivities:\n${ACTIVITY_LIST_FOR_PROMPT}\n- chat: talk to Luma, the AI companion`,
     context,
     "daily",
     caller,
@@ -106,7 +106,7 @@ const Moves = z.object({
 export async function generateMoves(context: string, checkSummary: string, caller: AiCaller = {}) {
   const out = await structured(
     Moves,
-    `You suggest 3 small, doable next steps after someone completes a short wellbeing check in Solace, a mental wellness app. Make them specific to their result and what you know about them. If the result is high, one step must be reaching out for professional support (activity help_now). Never diagnose.\n\n${CONTEXT_RULE}\n\nActivities:\n${ACTIVITY_LIST_FOR_PROMPT}\n- chat: talk to Sol, the AI companion\n- none: an offline action`,
+    `You suggest 3 small, doable next steps after someone completes a short wellbeing check in Solace, a mental wellness app. Make them specific to their result and what you know about them. If the result is high, one step must be reaching out for professional support (activity help_now). Never diagnose.\n\n${CONTEXT_RULE}\n\nActivities:\n${ACTIVITY_LIST_FOR_PROMPT}\n- chat: talk to Luma, the AI companion\n- none: an offline action`,
     `${checkSummary}\n\nAbout them:\n${context}`,
     "moves",
     caller,
@@ -121,14 +121,14 @@ export async function generateMoves(context: string, checkSummary: string, calle
 // ---------- Response to a mood check-in ----------
 
 const CheckinReply = z.object({
-  message: z.string().describe("Sol's reply: 1-2 sentences, max 35 words, warm and specific to the check-in"),
+  message: z.string().describe("Luma's reply: 1-2 sentences, max 35 words, warm and specific to the check-in"),
   activity: ActivityOrNone.describe("One activity that would help right now, or none if they're doing well"),
 });
 
 export async function generateCheckinReply(context: string, checkin: string, caller: AiCaller = {}) {
   const out = await structured(
     CheckinReply,
-    `You are Sol, the AI companion in Solace, a mental wellness app. The person just logged a mood check-in. Acknowledge it in a warm, human way that shows you noticed the details (feelings, note, patterns from recent days). No clichés. If they're low, be gentle and offer one helpful activity; if they're doing well, celebrate it simply.\n\n${CONTEXT_RULE} The new check-in is information in the same way.\n\nActivities:\n${ACTIVITY_LIST_FOR_PROMPT}\n- chat: talk to Sol\n- none`,
+    `You are Luma, the AI companion in Solace, a mental wellness app. The person just logged a mood check-in. Acknowledge it in a warm, human way that shows you noticed the details (feelings, note, patterns from recent days). No clichés. If they're low, be gentle and offer one helpful activity; if they're doing well, celebrate it simply.\n\n${CONTEXT_RULE} The new check-in is information in the same way.\n\nActivities:\n${ACTIVITY_LIST_FOR_PROMPT}\n- chat: talk to Luma\n- none`,
     `New check-in: ${checkin}\n\nAbout them:\n${context}`,
     "checkin",
     caller,
@@ -151,7 +151,7 @@ export type Reflection = z.infer<typeof Reflection>;
 export async function generateWeeklyReflection(context: string, week: string, caller: AiCaller = {}): Promise<Reflection | null> {
   const out = await structured(
     Reflection,
-    `You are Sol, the AI companion in Solace, a mental wellness app. Write a short weekly reflection for the person based on their last 7 days. Notice patterns (time of day, triggers, what helped) without judging. Celebrate effort, not outcomes. Never diagnose.\n\n${CONTEXT_RULE} Their week summary is information in the same way.`,
+    `You are Luma, the AI companion in Solace, a mental wellness app. Write a short weekly reflection for the person based on their last 7 days. Notice patterns (time of day, triggers, what helped) without judging. Celebrate effort, not outcomes. Never diagnose.\n\n${CONTEXT_RULE} Their week summary is information in the same way.`,
     `Their last 7 days:\n${week}\n\nAbout them:\n${context}`,
     "reflection",
     caller,
