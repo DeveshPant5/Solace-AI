@@ -102,11 +102,49 @@ function Mouth({ mood }: { mood: SolMood }) {
   }
 }
 
+/**
+ * Sol's little arms and feet, in the same soft colours as its body. Drawn before
+ * the body, so the body covers where they join. When Sol is joyful, one hand waves.
+ */
+function Limbs({ mood, arm, foot }: { mood: SolMood; arm: string; foot: string }) {
+  const limb = { stroke: arm, strokeWidth: 10, strokeLinecap: 'round' as const, fill: 'none' };
+  const waving = mood === 'joyful';
+  return (
+    <G>
+      {/* Legs and feet */}
+      <Path d="M86 146 Q84 160 83 171" stroke={foot} strokeWidth={11} strokeLinecap="round" fill="none" />
+      <Path d="M114 146 Q116 160 117 171" stroke={foot} strokeWidth={11} strokeLinecap="round" fill="none" />
+      <Ellipse cx={78} cy={177} rx={13} ry={7.5} fill={foot} transform="rotate(-8 78 177)" />
+      <Ellipse cx={122} cy={177} rx={13} ry={7.5} fill={foot} transform="rotate(8 122 177)" />
+      <Ellipse cx={79} cy={181} rx={9} ry={2.6} fill={INK} opacity={0.1} />
+      <Ellipse cx={121} cy={181} rx={9} ry={2.6} fill={INK} opacity={0.1} />
+      {/* Arms with mitten hands */}
+      <Path d="M50 100 Q32 106 27 121" {...limb} />
+      <Ellipse cx={25} cy={125} rx={9} ry={9.5} fill={arm} />
+      <Ellipse cx={22} cy={121} rx={3} ry={2} fill="#FFFFFF" opacity={0.35} />
+      {waving ? (
+        <G>
+          <Path d="M150 98 Q170 90 176 74" {...limb} />
+          <Ellipse cx={177} cy={70} rx={9} ry={9.5} fill={arm} />
+          <Ellipse cx={174} cy={66} rx={3} ry={2} fill="#FFFFFF" opacity={0.35} />
+        </G>
+      ) : (
+        <G>
+          <Path d="M150 100 Q168 106 173 121" {...limb} />
+          <Ellipse cx={175} cy={125} rx={9} ry={9.5} fill={arm} />
+          <Ellipse cx={172} cy={121} rx={3} ry={2} fill="#FFFFFF" opacity={0.35} />
+        </G>
+      )}
+    </G>
+  );
+}
+
 export function Sol({
   size = 120,
   mood = 'happy',
   tint = 0,
   animated = true,
+  limbs,
   style,
 }: {
   size?: number;
@@ -114,8 +152,11 @@ export function Sol({
   /** Mood value 1-5 to tint Sol, or 0 for the default glow. */
   tint?: number;
   animated?: boolean;
+  /** Arms and feet. On by default for larger Sols; small ones (avatars, the tab button) stay a simple face. */
+  limbs?: boolean;
   style?: ViewStyle;
 }) {
+  const withLimbs = limbs ?? size >= 80;
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const [c1, c2, c3] = TINTS[tint] ?? TINTS[0]!;
   const [blink, setBlink] = useState(false);
@@ -180,6 +221,9 @@ export function Sol({
             </LinearGradient>
           </Defs>
           <Circle cx={100} cy={112} r={98} fill={`url(#glow${id})`} />
+          {withLimbs && <Limbs mood={mood} arm={c2} foot={c3} />}
+          {/* With limbs, the body is drawn a little smaller and higher to leave room for the feet. */}
+          <G transform={withLimbs ? 'translate(14 2) scale(0.86)' : undefined}>
           {/* Sprout */}
           <Path d="M100 48 Q99 36 101 26" stroke="#6FBF8C" strokeWidth={4} strokeLinecap="round" fill="none" />
           <Path d="M100 33 C90 20 75 20 69 28 C78 38 92 39 100 33 Z" fill={`url(#leaf${id})`} />
@@ -196,6 +240,7 @@ export function Sol({
           <Ellipse cx={136} cy={124} rx={10} ry={6.5} fill="#FF8FAB" opacity={0.45} />
           <Eyes mood={mood} blink={blink} />
           <Mouth mood={mood} />
+          </G>
         </Svg>
       </Animated.View>
     </View>
