@@ -29,8 +29,8 @@ const CACHE_DIR = config.voiceCacheDir ?? fileURLToPath(new URL("../../.cache/vo
 const ELEVENLABS_API = config.elevenLabsBaseUrl.replace(/\/$/, "");
 const ELEVENLABS_URL = `${ELEVENLABS_API}/v1/text-to-speech`;
 const OUTPUT_FORMAT = "mp3_44100_64";
-// Calm and warm: steadier than default, very little added style, and a touch slower than normal speech.
-const VOICE_SETTINGS = { stability: 0.6, similarity_boost: 0.75, style: 0.05, use_speaker_boost: true, speed: 0.92 };
+// Calm and gentle: steady (little swing in pitch or energy), no added style, and a little slower than normal speech.
+const VOICE_SETTINGS = { stability: 0.72, similarity_boost: 0.7, style: 0, use_speaker_boost: true, speed: 0.9 };
 const UPSTREAM_TIMEOUT_MS = 30_000;
 const MAX_CONCURRENT_SYNTHESES = 4;
 

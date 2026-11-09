@@ -57,12 +57,17 @@ async function ensureAudioMode() {
   await setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'duckOthers' }).catch(() => undefined);
 }
 
+/** Soft, lighter voices that suit a little seedling, by name or by the engine's own label. */
+const GENTLE_VOICE = /female|samantha|ava|allison|susan|karen|moira|tessa|zoe|serena|nicky|veena|kate|fiona|sfg|tpf|tpc|iob|ena|enc/i;
+
 let deviceVoice: Promise<string | undefined> | null = null;
 function pickDeviceVoice() {
   deviceVoice ??= Speech.getAvailableVoicesAsync()
     .then((voices) => {
       const english = voices.filter((v) => v.language?.toLowerCase().startsWith('en'));
-      const best = english.find((v) => String(v.quality) === 'Enhanced') ?? english[0];
+      const gentle = english.filter((v) => GENTLE_VOICE.test(`${v.name} ${v.identifier}`));
+      const pool = gentle.length ? gentle : english;
+      const best = pool.find((v) => String(v.quality) === 'Enhanced') ?? pool[0];
       return best?.identifier;
     })
     .catch(() => undefined);
@@ -103,8 +108,9 @@ function speakOnDevice(text: string, gen: number): Promise<void> {
         };
         Speech.speak(text, {
           voice,
-          pitch: 1.08,
-          rate: 0.9,
+          // A lighter, younger sound for Pip, still unhurried.
+          pitch: 1.25,
+          rate: 0.88,
           onStart: () => {
             if (gen === generation) set({ speaking: true });
           },

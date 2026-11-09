@@ -105,7 +105,12 @@ export const config = {
 
   // ---------- Pip's voice (ElevenLabs) ----------
   elevenLabsApiKey: read("ELEVENLABS_API_KEY"),
-  pipVoiceId: parse("PIP_VOICE_ID", z.string().regex(/^[A-Za-z0-9]{8,40}$/, "expected an ElevenLabs voice id"), "bIHbv24MWmeRgasZH58o"),
+  /**
+   * Pip's ElevenLabs voice. Default: premade "Jessica" (young, bright and warm), which
+   * suits a little seedling better than a deep adult voice. Try others in ElevenLabs'
+   * Text to Speech page and put the chosen voice's id here.
+   */
+  pipVoiceId: parse("PIP_VOICE_ID", z.string().regex(/^[A-Za-z0-9]{8,40}$/, "expected an ElevenLabs voice id"), "cgSgspJ2msm6clMCkdW9"),
   elevenLabsModel: parse("ELEVENLABS_MODEL", z.string().regex(/^[a-z0-9_]{3,60}$/, "expected an ElevenLabs model id"), "eleven_flash_v2_5"),
   voiceDisabled: parse("VOICE_DISABLED", flag, "0"),
   voiceCacheMaxMb: parse("VOICE_CACHE_MAX_MB", int(10, 100_000), "200"),
