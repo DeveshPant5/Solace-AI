@@ -7,6 +7,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { MoodChart } from '@/components/MoodChart';
 import { Pip, pipStage } from '@/components/Pip';
 import { PipTip } from '@/components/PipTip';
+import { PatchBadge } from '@/components/HandIcon';
 import { Sol } from '@/components/Sol';
 import { Button, Card, ErrorNote, IconBadge, ProgressBar, Row, Screen, SectionTitle, T, type IconName } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -16,15 +17,16 @@ import type { ProgressData, Reflection } from '@/lib/types';
 import { useApi } from '@/lib/useApi';
 import { radius, space, useTheme } from '@/theme';
 
-const ACHIEVEMENT_ICONS: Record<string, IconName> = {
-  first_checkin: 'heart',
-  streak_3: 'zap',
-  streak_7: 'award',
-  breath_5: 'wind',
-  ground_1: 'anchor',
-  journal_3: 'feather',
-  talk_1: 'message-circle',
-  checks_all: 'compass',
+/** Each achievement's patch: a little drawing and the thread colour it's stitched in. */
+const ACHIEVEMENT_PATCHES: Record<string, { drawing: string; tone: 'sage' | 'lavender' | 'butter' | 'sky' | 'peach' | 'rose' }> = {
+  first_checkin: { drawing: 'sprout', tone: 'sage' },
+  streak_3: { drawing: 'growing', tone: 'lavender' },
+  streak_7: { drawing: 'sun', tone: 'butter' },
+  breath_5: { drawing: 'wind', tone: 'sky' },
+  ground_1: { drawing: 'footprints', tone: 'peach' },
+  journal_3: { drawing: 'notebook', tone: 'rose' },
+  talk_1: { drawing: 'chat-heart', tone: 'lavender' },
+  checks_all: { drawing: 'compass', tone: 'sage' },
 };
 
 function WeekStrip({ activeDays }: { activeDays: string[] }) {
@@ -234,16 +236,31 @@ export default function Journey() {
                 style={{
                   width: '47.5%',
                   flexGrow: 1,
-                  backgroundColor: a.earned ? c.butterSoft : c.surface,
+                  backgroundColor: c.surface,
                   borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: c.line,
                   padding: space.lg,
                   gap: 6,
-                  opacity: a.earned ? 1 : 0.75,
                 }}
               >
-                <IconBadge icon={ACHIEVEMENT_ICONS[a.id] ?? 'award'} bg={a.earned ? c.butter : c.sunken} fg={a.earned ? '#FFFFFF' : c.inkFaint} size={36} />
-                <T variant="bodyStrong">{a.title}</T>
-                <T variant="small" color={c.inkSoft} style={{ fontSize: 12 }}>
+                {(() => {
+                  const patch = ACHIEVEMENT_PATCHES[a.id] ?? { drawing: 'award', tone: 'butter' as const };
+                  const soft = c[`${patch.tone}Soft` as const];
+                  return (
+                    <PatchBadge
+                      name={patch.drawing}
+                      earned={a.earned}
+                      bg={a.earned ? soft : c.sunken}
+                      fg={a.earned ? c[patch.tone] : c.inkFaint}
+                      size={50}
+                    />
+                  );
+                })()}
+                <T variant="bodyStrong" color={a.earned ? c.ink : c.inkSoft}>
+                  {a.title}
+                </T>
+                <T variant="small" color={c.inkSoft} style={{ fontSize: 13, lineHeight: 18 }}>
                   {a.description}
                 </T>
                 {!a.earned && a.goal > 1 && <ProgressBar value={a.value / a.goal} color={c.butter} track={c.sunken} height={5} />}
