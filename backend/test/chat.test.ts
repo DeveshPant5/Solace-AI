@@ -1,5 +1,5 @@
-// End-to-end tests for chat with Sol, against a small local stand-in for the
-// Anthropic Messages API (the real SDK talks to it through ANTHROPIC_BASE_URL).
+// End-to-end tests for chat with Sol on Claude, against a small local stand-in for
+// the Anthropic Messages API (the real SDK talks to it through ANTHROPIC_BASE_URL).
 // Covers streaming, a tool call, the safety floor on a declined reply, and a
 // reply that breaks off part way.
 import assert from "node:assert/strict";
@@ -97,6 +97,7 @@ let closePool: () => Promise<void>;
 
 before(async () => {
   await new Promise<void>((resolve) => mock.listen(0, "127.0.0.1", () => resolve()));
+  process.env.AI_PROVIDER = "anthropic";
   process.env.ANTHROPIC_API_KEY = "test-key";
   process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(mock.address() as AddressInfo).port}`;
   process.env.LOG_REQUESTS = "0";
@@ -150,7 +151,7 @@ async function chat(conversationId: string, content: string) {
     });
 }
 
-describe("chat with Sol", () => {
+describe("chat with Sol (Claude)", () => {
   test("streams a reply, saves it, and names the conversation", async () => {
     const { json } = await api("/conversations", "POST");
     const events = await chat(json.conversation.id, "hello");

@@ -2,6 +2,7 @@
 // app in-process on a random port and use the database from DATABASE_URL (the
 // local one by default), creating throwaway accounts that are deleted at the end.
 //   npm test
+import "./offline.js";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
@@ -10,7 +11,7 @@ import jwt from "jsonwebtoken";
 import { createApp } from "../src/app.js";
 import { buildUserContext } from "../src/ai/context.js";
 import type { UserRow } from "../src/auth.js";
-import { config } from "../src/config.js";
+import { aiEnabled, config } from "../src/config.js";
 import { pool, queryOne } from "../src/db.js";
 import { migrate } from "../src/migrate.js";
 
@@ -235,7 +236,7 @@ describe("XP and limits", () => {
     assert.equal(moods.json.entries.length, 4);
   });
 
-  test("chat answers a calm 503 when AI isn't configured", { skip: Boolean(config.anthropicApiKey) }, async () => {
+  test("chat answers a calm 503 when AI isn't configured", { skip: aiEnabled }, async () => {
     const { token } = A;
     const convo = await call("/conversations", { method: "POST", token });
     const r = await call(`/conversations/${convo.json.conversation.id}/messages`, { token, body: { content: "hi" } });
