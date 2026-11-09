@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityCard } from '@/components/ActivityCard';
@@ -202,7 +202,7 @@ export default function Home() {
 
         {/* Today's focus */}
         {daily && (
-          <Animated.View entering={FadeInDown.delay(150).duration(500)}>
+          <Animated.View entering={FadeInDown.delay(150).duration(500)} layout={LinearTransition.duration(300)}>
             <SectionTitle title="Today’s focus" />
             <Card style={{ gap: space.md }}>
               <Row gap={space.md}>
@@ -221,7 +221,9 @@ export default function Home() {
 
         {/* Today's plan: the daily tasks due today */}
         {tasks.data && (
-          <Animated.View entering={FadeInDown.delay(180).duration(500)}>
+          // No slide-in here: Today's focus can arrive above it a moment later, and on Android a card
+          // still sliding in kept its old place and covered the focus card. It glides down instead.
+          <Animated.View layout={LinearTransition.duration(300)}>
             {todayTasks.length > 0 ? (
               <>
                 <SectionTitle title="Today’s plan" action="All tasks" onAction={() => router.push('/tasks')} />
@@ -254,7 +256,7 @@ export default function Home() {
           {QUICK.map((q, i) => {
             const a = accent(c, q.accent);
             return (
-              <Animated.View key={q.title} entering={FadeInDown.delay(200 + i * 60)} style={{ width: '47.5%', flexGrow: 1 }}>
+              <Animated.View key={q.title} entering={FadeInDown.delay(200 + i * 60)} layout={LinearTransition.duration(300)} style={{ width: '47.5%', flexGrow: 1 }}>
                 <Tappable
                   onPress={() => router.push(q.href)}
                   style={{ backgroundColor: a.soft, borderRadius: radius.lg, padding: space.lg, gap: space.md }}
