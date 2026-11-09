@@ -27,23 +27,20 @@ export default function Practices() {
   return (
     <Screen tabBar>
       <T variant="title">Practices</T>
-      <T variant="body" color={c.inkSoft} style={{ marginTop: 4 }}>
-        Small things that help, whenever you need them.
-      </T>
       <PipTip id="practices" style={{ marginTop: space.xl, marginBottom: 0 }} />
 
       <SectionTitle title="Breathe & ground" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.md, paddingRight: space.xl }} style={{ marginHorizontal: -space.xl, paddingLeft: space.xl }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.md, paddingRight: space.xl, alignItems: 'stretch' }} style={{ marginHorizontal: -space.xl, paddingLeft: space.xl }}>
         {BREATHING.map((id, i) => {
           const info = ACTIVITY_INFO[id as keyof typeof ACTIVITY_INFO];
           const a = accent(c, info.accent);
           return (
-            <Animated.View key={id} entering={FadeInDown.delay(i * 60)}>
-              <Tappable onPress={() => router.push(info.href)} style={{ width: 150, height: 170, borderRadius: radius.lg, backgroundColor: a.soft, padding: space.lg, justifyContent: 'space-between' }}>
+            <Animated.View key={id} entering={FadeInDown.delay(i * 60)} style={{ flexDirection: 'row' }}>
+              <Tappable onPress={() => router.push(info.href)} style={{ flex: 1, width: 140, borderRadius: radius.lg, backgroundColor: a.soft, padding: space.lg, gap: space.md }}>
                 <IconBadge icon={info.icon} bg={c.surface} fg={a.strong} />
-                <View>
+                <View style={{ gap: 2 }}>
                   <T variant="subheading">{info.title}</T>
-                  <T variant="small" color={c.inkSoft}>
+                  <T variant="small" color={c.inkSoft} numberOfLines={1}>
                     {info.subtitle}
                   </T>
                 </View>
@@ -54,36 +51,22 @@ export default function Practices() {
       </ScrollView>
 
       <SectionTitle title="Wellbeing check-ins" />
-      <T variant="small" color={c.inkSoft} style={{ marginTop: -space.sm, marginBottom: space.md }}>
-        Short, gentle check-ins. Each one earns XP. These aren’t diagnoses, just a snapshot.
-      </T>
       <View style={{ gap: space.md }}>
         {CHECKS.map((check) => {
           const info = ACTIVITY_INFO[check.id as keyof typeof ACTIVITY_INFO];
           const a = accent(c, info.accent);
           const last = latest(check.kind);
           return (
-            <Card key={check.kind} onPress={() => router.push(info.href)} tone={a.soft} style={{ gap: space.sm }}>
+            <Card key={check.kind} onPress={() => router.push(info.href)} tone={a.soft} style={{ gap: space.xs }}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <T variant="heading">{info.title}</T>
-                {last ? <Pill text={last.label} bg={c.surface} fg={c.ink} /> : <Pill text="New" bg={c.surface} fg={a.strong} />}
+                {last && <Pill text={last.label} bg={c.surface} fg={c.ink} />}
               </Row>
-              <T variant="small" color={c.inkSoft}>
-                {check.blurb}
-              </T>
-              <Row style={{ justifyContent: 'space-between', marginTop: space.xs }}>
-                <Row gap={6}>
-                  <Feather name="star" size={13} color={c.inkSoft} />
-                  <T variant="small" color={c.inkSoft} style={{ fontSize: 12 }}>
-                    +2 XP per question · +20 bonus
-                  </T>
-                </Row>
-                {last && (
-                  <T variant="small" color={c.inkFaint} style={{ fontSize: 12 }}>
-                    Last: {relativeDay(last.createdAt)}
-                  </T>
-                )}
-              </Row>
+              {last && (
+                <T variant="small" color={c.inkFaint} style={{ fontSize: 12 }}>
+                  Last: {relativeDay(last.createdAt)}
+                </T>
+              )}
             </Card>
           );
         })}
@@ -116,12 +99,9 @@ export default function Practices() {
         <Card onPress={() => router.push('/journal/new')} tone={c.butterSoft}>
           <Row gap={space.md}>
             <IconBadge icon="feather" bg={c.surface} fg={c.butter} />
-            <View style={{ flex: 1 }}>
-              <T variant="bodyStrong">Write in your journal</T>
-              <T variant="small" color={c.inkSoft}>
-                A prompt to get you started, or a blank page
-              </T>
-            </View>
+            <T variant="bodyStrong" style={{ flex: 1 }}>
+              Write in your journal
+            </T>
           </Row>
         </Card>
         <Card onPress={() => router.push('/journal')} style={{ padding: space.lg }}>

@@ -214,15 +214,11 @@ export default function Home() {
               <Animated.View key={q.title} entering={FadeInDown.delay(200 + i * 60)} style={{ width: '47.5%', flexGrow: 1 }}>
                 <Tappable
                   onPress={() => router.push(q.href)}
-                  style={{ backgroundColor: a.soft, borderRadius: radius.lg, padding: space.lg, minHeight: 116, justifyContent: 'space-between' }}
+                  style={{ backgroundColor: a.soft, borderRadius: radius.lg, padding: space.lg, gap: space.md }}
+                  accessibilityHint={q.sub}
                 >
                   <IconBadge icon={q.icon} bg={c.surface} fg={a.strong} size={38} />
-                  <View>
-                    <T variant="subheading">{q.title}</T>
-                    <T variant="small" color={c.inkSoft}>
-                      {q.sub}
-                    </T>
-                  </View>
+                  <T variant="subheading">{q.title}</T>
                 </Tappable>
               </Animated.View>
             );

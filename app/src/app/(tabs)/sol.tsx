@@ -64,7 +64,7 @@ export default function SolTab() {
           Hi{user?.name ? ` ${user.name}` : ''}, I’m Sol
         </T>
         <T variant="body" color={c.inkSoft} center style={{ marginTop: space.sm, maxWidth: 320 }}>
-          I’m here to listen, help you make sense of things, and suggest something kind when you need it.
+          I’m here to listen, whenever you need me.
         </T>
         <Button title="Start a conversation" icon="message-circle" onPress={() => start()} loading={starting} style={{ marginTop: space.xl, alignSelf: 'stretch' }} />
       </View>

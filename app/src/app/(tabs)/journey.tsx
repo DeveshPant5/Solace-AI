@@ -89,9 +89,6 @@ export default function Journey() {
   return (
     <Screen tabBar>
       <T variant="title">Your journey</T>
-      <T variant="body" color={c.inkSoft} style={{ marginTop: 4 }}>
-        Every small step counts. Here’s how far you’ve come.
-      </T>
       <PipTip id="journey" style={{ marginTop: space.xl, marginBottom: 0 }} />
       {error && !data && (
         <View style={{ marginTop: space.lg }}>
@@ -117,9 +114,6 @@ export default function Journey() {
                 <View style={{ marginTop: space.sm }}>
                   <ProgressBar value={levelProgress} color={c.sage} track={c.sageSoft} height={10} />
                 </View>
-                <T variant="small" color={c.inkFaint} style={{ marginTop: 2 }}>
-                  Pip grows a little with every step you take.
-                </T>
               </View>
             </Row>
           </Card>
@@ -142,11 +136,6 @@ export default function Journey() {
               </View>
             </Row>
             <WeekStrip activeDays={p.activeDays} />
-            {!p.streak.activeToday && (
-              <T variant="small" color={c.inkSoft} style={{ marginTop: space.md }}>
-                Do any small thing today to keep your streak going.
-              </T>
-            )}
           </Card>
         </Animated.View>
       )}
@@ -257,11 +246,8 @@ export default function Journey() {
                     />
                   );
                 })()}
-                <T variant="bodyStrong" color={a.earned ? c.ink : c.inkSoft}>
+                <T variant="bodyStrong" color={a.earned ? c.ink : c.inkSoft} accessibilityHint={a.description}>
                   {a.title}
-                </T>
-                <T variant="small" color={c.inkSoft} style={{ fontSize: 13, lineHeight: 18 }}>
-                  {a.description}
                 </T>
                 {!a.earned && a.goal > 1 && <ProgressBar value={a.value / a.goal} color={c.butter} track={c.sunken} height={5} />}
               </View>

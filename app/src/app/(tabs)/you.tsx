@@ -67,26 +67,25 @@ export default function You() {
 
       <SectionTitle title="Your space" />
       <Card style={{ paddingVertical: space.sm }}>
-        <MenuRow icon="bell" title="Reminders" subtitle="Check-ins, affirmations and more" href="/reminders" bg={c.butterSoft} fg={c.butter} />
+        <MenuRow icon="bell" title="Reminders" href="/reminders" bg={c.butterSoft} fg={c.butter} />
         <MenuRow
           icon="bookmark"
           title="What Sol remembers"
-          subtitle={memoryOn ? 'See or delete Sol’s memories' : 'Memory is off'}
+          subtitle={memoryOn ? undefined : 'Memory is off'}
           href="/memory"
           bg={c.lavenderSoft}
           fg={c.primary}
         />
-        <MenuRow icon="book-open" title="Journal" subtitle="Your past entries" href="/journal" bg={c.peachSoft} fg={c.peach} />
-        <MenuRow icon="sliders" title="Settings" subtitle="Name, Sol’s tone, focus areas, account" href="/settings" bg={c.skySoft} fg={c.sky} />
+        <MenuRow icon="book-open" title="Journal" href="/journal" bg={c.peachSoft} fg={c.peach} />
+        <MenuRow icon="sliders" title="Settings" href="/settings" bg={c.skySoft} fg={c.sky} />
       </Card>
 
       <SectionTitle title="Support" />
       <Card style={{ paddingVertical: space.sm }}>
-        <MenuRow icon="life-buoy" title="Get support now" subtitle="Helplines and crisis support" href="/help" bg={c.roseSoft} fg={c.danger} />
+        <MenuRow icon="life-buoy" title="Get support now" href="/help" bg={c.roseSoft} fg={c.danger} />
         <MenuRow
           icon="compass"
           title="Take the tour with Pip"
-          subtitle="Pip shows you around again, tips and all"
           onPress={() => {
             if (user) void replayTour(user.id).then(() => router.navigate('/'));
           }}
@@ -101,10 +100,7 @@ export default function You() {
           <T variant="bodyStrong">Your privacy</T>
         </Row>
         <T variant="small" color={c.inkSoft}>
-          Your check-ins, journal and conversations are private to your account. You can delete any of them, or your whole account, at any time. Solace is a wellbeing companion, not a medical service.
-        </T>
-        <T variant="small" color={c.inkSoft}>
-          To reply, Sol and Pip send what you share to Groq, a service that runs open AI models. When Pip’s voice is on, Pip’s lines go to ElevenLabs to be spoken.
+          Everything you share stays private to your account, and you can delete it any time. Replies come from Groq’s open AI models; Pip’s voice uses ElevenLabs.
         </T>
       </Card>
 
