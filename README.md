@@ -78,16 +78,16 @@ Install the APK on an Android phone on the same Wi-Fi. On Fedora, the firewall b
 The APK has to reach the API from any phone, so the backend runs on a public host with HTTPS. The repo includes a Render Blueprint (`render.yaml`) that creates the API and a free Postgres database in one go.
 
 1. Get a free Groq API key at https://console.groq.com/keys.
-2. Push the repo to GitHub, then in Render: **New → Blueprint**, connect the repo, and apply. When asked, paste `GROQ_API_KEY` (and `ELEVENLABS_API_KEY` if you want Pip's natural voice; leave it empty otherwise). `JWT_SECRET` is generated for you; `TRUST_PROXY=1` and `NODE_VERSION=22` are set.
+2. Push the repo to GitHub, then in Render: **New → Blueprint**, connect the repo, and apply. When asked, paste `GROQ_API_KEY` (and `ELEVENLABS_API_KEY` if you want Pip's natural voice; leave it empty otherwise). `JWT_SECRET` is generated for you; `TRUST_PROXY=3` (Render's proxy hops) and `NODE_VERSION=22` are set.
    Pip's natural voice only uses the free characters your ElevenLabs plan includes. When they run out, Pip switches to the phone's voice until the monthly reset, so a free ElevenLabs account never costs anything.
 3. When the deploy is live, open `https://<your-service>.onrender.com/health`: it should show `"ok":true` and `"ai":true`.
-4. Open `https://<your-service>.onrender.com/health/ip` on your phone and compare `ip` with your public IP (search "what is my ip"). If they differ, raise `TRUST_PROXY` by one in Render's environment settings until they match; rate limits rely on it.
+4. Open `https://<your-service>.onrender.com/health/ip` on your phone and compare `ip` with your public IP (search "what is my ip"). If they differ, change `TRUST_PROXY` in `render.yaml` (Render syncs it) until they match; rate limits rely on it.
 5. Build the APK against it: `cd app && API_URL=https://<your-service>.onrender.com npm run build:apk`. An `https://` address builds an APK that refuses plain HTTP.
 
 Free plan notes:
 - The API sleeps after 15 minutes without requests, and the next request then waits up to a minute. To keep it awake, add a repository variable `BACKEND_URL` (GitHub → Settings → Secrets and variables → Actions → Variables) and the included workflow `.github/workflows/keep-awake.yml` pings it every 10 minutes. Render's free 750 hours a month cover one service running all month.
 - Render's free Postgres expires 30 days after it's created. For one that doesn't, create a free database on Neon and set `DATABASE_URL` to its connection string (with `sslmode=require`).
-- Other hosts (Railway, Fly, Koyeb) work the same way: build `npm ci --include=dev && npm run build`, start `npm start` from `backend/`, health check `/health`, and the environment variables from `backend/.env.example`.
+- Other hosts (Railway, Fly, Koyeb) work the same way (check `/health/ip` there too and set `TRUST_PROXY` to their hop count): build `npm ci --include=dev && npm run build`, start `npm start` from `backend/`, health check `/health`, and the environment variables from `backend/.env.example`.
 
 ## Security
 

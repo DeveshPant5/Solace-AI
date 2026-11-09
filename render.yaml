@@ -21,9 +21,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # One proxy in front of the app. Check with GET /health/ip after the first deploy.
+      # Render puts three proxy hops in front of the app (checked with GET /health/ip on
+      # 2026-11-09: three X-Forwarded-For entries per request). Counting three from the
+      # right gives the real client address, and a client can't fake it.
       - key: TRUST_PROXY
-        value: "1"
+        value: "3"
       - key: JWT_SECRET
         generateValue: true
       - key: GROQ_API_KEY

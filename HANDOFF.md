@@ -113,7 +113,8 @@ A hackathon entry for the **Solace AI Hackathon** run by Humanity Founders. Brie
 2. Deploy (the APK must work on any phone, so the backend needs a public HTTPS address). The user asked for this on 2026-11-09:
    - commit and push (only when the user says so); Render deploys from GitHub
    - Render → New → Blueprint → this repo → paste `GROQ_API_KEY` (and optionally `ELEVENLABS_API_KEY`); `render.yaml` creates the API (`solace-api`, Singapore, free) and a free Postgres
-   - check `https://<service>.onrender.com/health` and `/health/ip` (compare `ip` with the phone's public IP; adjust `TRUST_PROXY` until it matches)
+   - **deployed 2026-11-09: https://solace-api-zy7a.onrender.com** (Blueprint "solace ai", service `solace-api`, database `solace-db`, Singapore, free). `/health` showed db up, AI and voice on, HSTS present
+   - Render has **three** proxy hops (three `X-Forwarded-For` entries per request; a spoofed entry adds a fourth on the left), so `render.yaml` sets `TRUST_PROXY=3`; with 1, every user shared one rate-limit bucket (`req.ip` was an internal 10.x address). Check `/health/ip` shows the caller's public IP
    - optional: GitHub repo variable `BACKEND_URL` turns on the keep-awake ping (free instances sleep after 15 idle minutes)
    - Render's free Postgres expires after 30 days; for longer, use Neon and set `DATABASE_URL`
    - to seed the demo account there: `ALLOW_DEMO_SEED=1 SEED_DEMO_PASSWORD=<private> DATABASE_URL=<external url> npm run seed:demo` (the public local password is refused)
