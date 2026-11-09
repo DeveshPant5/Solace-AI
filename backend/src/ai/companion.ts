@@ -1,17 +1,13 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { config } from "../config.js";
+import { aiEnabled } from "../config.js";
 import { ACTIVITY_IDS, ACTIVITY_LIST_FOR_PROMPT, type ActivityId } from "../content/catalog.js";
 import { queryOne, withUserLock } from "../db.js";
-import { aiAllowed, recordAiOutput, recordAiRequest } from "../lib/budget.js";
+import { aiAllowed, recordAiRequest } from "../lib/budget.js";
 import { shutdownSignal } from "../lib/lifecycle.js";
 import { oneLine } from "../lib/text.js";
-import { anthropic, logAiError, MODEL } from "./client.js";
+import { chatProfile, createChatSession, RetryableStepError, type ToolCall, type ToolOutcome, type ToolSpec } from "./chatProviders.js";
+import { logAiError } from "./client.js";
 import { CONTEXT_RULE } from "./context.js";
-
-type BetaMessageParam = Anthropic.Beta.BetaMessageParam;
-type BetaTool = Anthropic.Beta.BetaTool;
-type BetaToolResultBlockParam = Anthropic.Beta.BetaToolResultBlockParam;
 
 // Frozen persona. Per-person details go in a second system block so this
 // prefix stays identical across every user and request.
@@ -65,21 +61,15 @@ const MAX_MEMORIES = 200;
 const MAX_REMINDERS = 30;
 const MAX_REMINDERS_PER_REPLY = 2;
 
-/**
- * Sol's replies are meant to be a few sentences. The ceiling leaves plenty of
- * room for a long reply plus thinking, while capping what one message can cost.
- */
-const CHAT_MAX_TOKENS = 8192;
 const MAX_TOOL_ITERATIONS = 4;
 /** Re-issues allowed after a tool input that couldn't be parsed at all. */
 const MAX_RETRIES = 1;
 
-const TOOLS: BetaTool[] = [
+const TOOLS: ToolSpec[] = [
   {
     name: "suggest_activity",
     description:
       "Show the person a tappable card that opens one of the app's activities. Use sparingly, only when the activity would genuinely help right now.",
-    eager_input_streaming: true,
     input_schema: {
       type: "object",
       properties: {
@@ -100,7 +90,6 @@ const TOOLS: BetaTool[] = [
     name: "remember",
     description:
       "Save one durable fact about the person to your long-term memory so you can support them better in future conversations. They can see and delete these in the app.",
-    eager_input_streaming: true,
     input_schema: {
       type: "object",
       properties: {
@@ -117,7 +106,6 @@ const TOOLS: BetaTool[] = [
     name: "create_reminder",
     description:
       "Create a daily reminder notification on the person's phone at a local time. Only when they ask for one or agree to your offer.",
-    eager_input_streaming: true,
     input_schema: {
       type: "object",
       properties: {
@@ -157,7 +145,7 @@ interface TurnOptions {
   conversationId: string;
   memoryEnabled: boolean;
   userContext: string;
-  history: BetaMessageParam[];
+  history: { role: "user" | "assistant"; content: string }[];
   emit: Emit;
   /** Filled in as the turn runs, so the caller keeps what was written even if the turn fails part way. */
   result: TurnResult;
@@ -172,16 +160,15 @@ interface TurnOptions {
  */
 export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
   const result = opts.result;
-  if (!anthropic) throw new Error("AI is not configured");
+  if (!aiEnabled) throw new Error("AI is not configured");
 
-  const tools = opts.memoryEnabled ? TOOLS : TOOLS.filter((t) => t.name !== "remember");
-  const messages: BetaMessageParam[] = [...opts.history];
-  const system: Anthropic.Beta.BetaTextBlockParam[] = [
-    // The persona (with the tools before it) is identical for everyone, so it is cached;
-    // the per-person block changes every request and comes after the breakpoint.
-    { type: "text", text: PERSONA, cache_control: { type: "ephemeral" } },
-    { type: "text", text: `About the person you're talking with:\n${opts.userContext}` },
-  ];
+  const session = createChatSession({
+    persona: PERSONA,
+    context: opts.userContext,
+    history: opts.history,
+    tools: opts.memoryEnabled ? TOOLS : TOOLS.filter((t) => t.name !== "remember"),
+    signal: shutdownSignal,
+  });
 
   let retries = 0;
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
@@ -191,35 +178,19 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
 
     const textBefore = result.text;
     let wroteThisIteration = false;
-    const stream = anthropic.beta.messages.stream(
-      {
-        model: MODEL,
-        max_tokens: CHAT_MAX_TOKENS,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        output_config: { effort: config.chatEffort },
-        system,
-        tools,
-        messages,
-      },
-      { timeout: 180_000, maxRetries: 1, signal: shutdownSignal },
-    );
-    stream.on("text", (delta) => {
-      if (!wroteThisIteration && result.text.length > 0) {
-        result.text += "\n\n";
-        opts.emit("delta", { text: "\n\n" });
-      }
-      wroteThisIteration = true;
-      result.text += delta;
-      opts.emit("delta", { text: delta });
-    });
-
-    let message: Anthropic.Beta.BetaMessage;
+    let step;
     try {
-      message = await stream.finalMessage();
+      step = await session.step((delta) => {
+        if (!wroteThisIteration && result.text.length > 0) {
+          result.text += "\n\n";
+          opts.emit("delta", { text: "\n\n" });
+        }
+        wroteThisIteration = true;
+        result.text += delta;
+        opts.emit("delta", { text: delta });
+      });
     } catch (err) {
-      // Only a tool input the SDK couldn't parse is worth re-issuing; API errors and dropped connections are not.
-      if (!isToolJsonError(err) || shutdownSignal.aborted || retries >= MAX_RETRIES) throw err;
+      if (!(err instanceof RetryableStepError) || shutdownSignal.aborted || retries >= MAX_RETRIES) throw err;
       // Take back what this attempt wrote, then re-issue.
       logAiError("companion", err);
       retries++;
@@ -230,26 +201,23 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
       }
       continue;
     }
-    recordAiOutput(message.usage?.output_tokens);
 
-    if (message.stop_reason === "refusal") {
+    if (step.stop === "refusal") {
       result.declined = true;
       result.text = DECLINED_TEXT;
       opts.emit("replace", { text: DECLINED_TEXT });
       break;
     }
+    if (step.toolCalls.length === 0 || step.stop === "max_tokens") break;
 
-    const toolUses = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
-    if (toolUses.length === 0 || message.stop_reason === "max_tokens") break;
-
-    messages.push({ role: "assistant", content: message.content });
-    const toolResults: BetaToolResultBlockParam[] = [];
-    for (const call of toolUses) {
-      toolResults.push(await runTool(call, opts, result));
-    }
+    const outcomes: ToolOutcome[] = [];
+    for (const call of step.toolCalls) outcomes.push(await runTool(call, opts, result));
     // The person left: the tools they asked for have run, but don't pay for another round nobody will read.
     if (opts.clientGone()) break;
-    messages.push({ role: "user", content: toolResults });
+    // Where requests are scarce (free tiers), a reply that's already written doesn't need another
+    // round just to acknowledge its tools. A failed tool still goes back so Sol can respond to it.
+    if (!chatProfile.followUpAfterTools && wroteThisIteration && outcomes.every((o) => !o.isError)) break;
+    session.addToolResults(outcomes);
   }
 
   if (!result.text.trim() && !result.declined) {
@@ -259,21 +227,10 @@ export async function runCompanionTurn(opts: TurnOptions): Promise<TurnResult> {
   return result;
 }
 
-function isToolJsonError(err: unknown): boolean {
-  return (
-    err instanceof Anthropic.AnthropicError &&
-    !(err instanceof Anthropic.APIError) &&
-    err.message.startsWith("Unable to parse tool parameter JSON")
-  );
-}
-
-async function runTool(call: Anthropic.Beta.BetaToolUseBlock, opts: TurnOptions, result: TurnResult): Promise<BetaToolResultBlockParam> {
-  const error = (content: string): BetaToolResultBlockParam => ({
-    type: "tool_result",
-    tool_use_id: call.id,
-    is_error: true,
-    content,
-  });
+async function runTool(call: ToolCall, opts: TurnOptions, result: TurnResult): Promise<ToolOutcome> {
+  const error = (content: string): ToolOutcome => ({ id: call.id, content, isError: true });
+  const ok = (content: string): ToolOutcome => ({ id: call.id, content, isError: false });
+  if (call.inputError) return error(call.inputError);
 
   if (call.name === "suggest_activity") {
     const parsed = SuggestInput.safeParse(call.input);
@@ -288,7 +245,7 @@ async function runTool(call: Anthropic.Beta.BetaToolUseBlock, opts: TurnOptions,
     };
     result.suggestions.push(suggestion);
     opts.emit("suggestion", suggestion);
-    return { type: "tool_result", tool_use_id: call.id, content: "The card is now shown under your message." };
+    return ok("The card is now shown under your message.");
   }
 
   if (call.name === "remember") {
@@ -319,7 +276,7 @@ async function runTool(call: Anthropic.Beta.BetaToolUseBlock, opts: TurnOptions,
       result.memories.push({ id: outcome.id, content: fact });
       opts.emit("memory", { id: outcome.id, content: fact });
     }
-    return { type: "tool_result", tool_use_id: call.id, content: "Saved." };
+    return ok("Saved.");
   }
 
   if (call.name === "create_reminder") {
@@ -346,7 +303,7 @@ async function runTool(call: Anthropic.Beta.BetaToolUseBlock, opts: TurnOptions,
     opts.emit("reminder", reminder);
     const hh = String(parsed.data.hour).padStart(2, "0");
     const mm = String(parsed.data.minute).padStart(2, "0");
-    return { type: "tool_result", tool_use_id: call.id, content: `Daily reminder set for ${hh}:${mm} their time.` };
+    return ok(`Daily reminder set for ${hh}:${mm} their time.`);
   }
 
   return error(`Unknown tool ${call.name}`);

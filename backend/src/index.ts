@@ -1,5 +1,5 @@
 import { createApp } from "./app.js";
-import { aiEnabled, config, voiceEnabled } from "./config.js";
+import { aiChatModel, config, voiceEnabled } from "./config.js";
 import { pool } from "./db.js";
 import { beginShutdown } from "./lib/lifecycle.js";
 import { migrate } from "./migrate.js";
@@ -22,7 +22,7 @@ async function migrateWithRetry(attempts = 10) {
 await migrateWithRetry();
 const server = createApp().listen(config.port, "0.0.0.0", () => {
   console.log(`Solace API listening on http://0.0.0.0:${config.port}`);
-  console.log(aiEnabled ? `AI companion on (${config.claudeModel})` : "AI companion OFF: set ANTHROPIC_API_KEY in backend/.env to enable Sol");
+  console.log(aiChatModel ? `AI companion on: ${aiChatModel}` : "AI companion OFF: set GROQ_API_KEY (free) or ANTHROPIC_API_KEY in backend/.env to enable Sol");
   if (voiceEnabled) console.log("Pip's voice on (ElevenLabs)");
   if (config.trustProxy === 0 && config.isProduction) {
     console.warn("TRUST_PROXY is 0: if this runs behind a proxy (Render, Fly, a load balancer), set TRUST_PROXY=1 so rate limits see real client addresses.");

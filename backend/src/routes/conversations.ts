@@ -1,8 +1,8 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { Router, type Response } from "express";
 import { z } from "zod";
 import { analyzeMessage, generateTitle, type MessageSignal } from "../ai/analysis.js";
-import { logAiError } from "../ai/client.js";
+import { chatProfile } from "../ai/chatProviders.js";
+import { aiErrorKind, logAiError } from "../ai/client.js";
 import { DECLINED_TEXT, newTurnResult, runCompanionTurn, type Emit, type Suggestion } from "../ai/companion.js";
 import { buildUserContext } from "../ai/context.js";
 import { combineRisk, type Risk } from "../ai/safety.js";
@@ -115,10 +115,9 @@ const chatDailyLimit = userRateLimit({
 const activeTurns = new Map<string, number>();
 const MAX_ACTIVE_TURNS = 2;
 
-/** History replayed to the model: newest messages first, within a size budget. */
-const HISTORY_MAX_MESSAGES = 40;
-const HISTORY_MAX_CHARS = 24_000;
 const SIGNAL_GRACE_MS = 10_000;
+
+const RESTING = "Sol is resting for today. Your practices and journal are still here, and Sol will be back tomorrow.";
 
 /** Open chat streams, so shutdown can close them politely. */
 export const openStreams = new Set<Response>();
@@ -141,13 +140,13 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
   const convo = await ownedConversation(user.id, String(req.params.id ?? ""));
   const { content } = SendMessage.parse(req.body);
   if (!aiEnabled) {
-    throw new HttpError(503, "Sol isn't connected yet. Add an Anthropic API key to the backend to start chatting.", "ai_unavailable");
+    throw new HttpError(503, "Sol isn't connected yet. Add a Groq API key (free) or an Anthropic API key to the backend to start chatting.", "ai_unavailable");
   }
   if (isShuttingDown()) {
     throw new HttpError(503, "Sol is taking a short pause while the server restarts. Please try again in a moment.", "restarting");
   }
   if (!aiAllowed({ userId: user.id })) {
-    throw new HttpError(503, "Sol is resting for today. Your practices and journal are still here, and Sol will be back tomorrow.", "ai_resting");
+    throw new HttpError(503, RESTING, "ai_resting");
   }
   if ((activeTurns.get(user.id) ?? 0) >= MAX_ACTIVE_TURNS) {
     throw new HttpError(429, "Sol is still finishing a reply. Give it a moment, then send again.", "busy");
@@ -266,10 +265,15 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
           { incomplete: true, ...(latest.signal && latest.signal.risk !== "none" ? { safety: latest.signal.risk } : {}) },
         ]).catch((saveErr) => logAiError("chat-save", saveErr));
       }
+      const kind = aiErrorKind(err);
       emit("error", {
         message: shutdownSignal.aborted
           ? "Sol is taking a short pause while the server restarts. Please try again in a moment."
-          : "Sol couldn't reply just now. Please try again in a moment.",
+          : kind === "daily_limit"
+            ? RESTING
+            : kind === "busy"
+              ? "Sol is catching up on a lot of messages. Please try again in a minute."
+              : "Sol couldn't reply just now. Please try again in a moment.",
       });
     }
   } finally {
@@ -282,27 +286,29 @@ conversationsRouter.post("/:id/messages", chatBurstLimit, chatDailyLimit, async 
   }
 });
 
+type Turn = { role: "user" | "assistant"; content: string };
+
 /** The last messages of a conversation, oldest first, starting with a user message, within the size budget. */
 async function loadHistory(conversationId: string) {
-  const newestFirst = await query<{ role: "user" | "assistant"; content: string }>(
+  const newestFirst = await query<Turn>(
     "SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT $2",
-    [conversationId, HISTORY_MAX_MESSAGES],
+    [conversationId, chatProfile.historyMessages],
   );
-  const kept: { role: "user" | "assistant"; content: string }[] = [];
+  const kept: Turn[] = [];
   let chars = 0;
   for (const m of newestFirst) {
     chars += m.content.length;
-    if (kept.length > 0 && chars > HISTORY_MAX_CHARS) break;
+    if (kept.length > 0 && chars > chatProfile.historyChars) break;
     kept.push(m);
   }
   const rows = kept.reverse();
   while (rows.length && rows[0]!.role !== "user") rows.shift();
 
   // A failed turn can leave two user messages in a row: join them into one turn.
-  const history: Anthropic.Beta.BetaMessageParam[] = [];
+  const history: Turn[] = [];
   for (const m of rows) {
     const last = history[history.length - 1];
-    if (last && last.role === m.role && typeof last.content === "string") last.content += `\n\n${m.content}`;
+    if (last && last.role === m.role) last.content += `\n\n${m.content}`;
     else history.push({ role: m.role, content: m.content });
   }
   const recentText = rows

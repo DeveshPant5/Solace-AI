@@ -2,6 +2,7 @@ import type { UserRow } from "../auth.js";
 import { ASSESSMENTS, type AssessmentKind } from "../content/assessments.js";
 import { MOOD_LABELS } from "../content/catalog.js";
 import { query } from "../db.js";
+import { chatProfile } from "./chatProviders.js";
 import { progressSummary } from "../lib/progress.js";
 import { clip, oneLine, stripTags } from "../lib/text.js";
 
@@ -52,8 +53,8 @@ export async function buildUserContext(user: UserRow, opts: { excludeConversatio
     ),
     memoryOn
       ? query<{ content: string; category: string }>(
-          "SELECT content, category FROM memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT 40",
-          [user.id],
+          "SELECT content, category FROM memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+          [user.id, chatProfile.contextMemories],
         )
       : Promise.resolve([]),
     memoryOn
