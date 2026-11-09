@@ -41,7 +41,7 @@ export async function buildUserContext(user: UserRow, opts: { excludeConversatio
   const memoryOn = user.preferences.memoryEnabled !== false;
   const profile = user.profile as { focus?: unknown; intention?: unknown; checkinTime?: string };
 
-  const [moods, assessments, memories, journals, conversations, progress] = await Promise.all([
+  const [moods, assessments, memories, journals, conversations, progress, earlier] = await Promise.all([
     query<{ mood: number; emotions: string[]; note: string | null; created_at: string }>(
       "SELECT mood, emotions, note, created_at FROM mood_entries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 6",
       [user.id],
@@ -72,6 +72,15 @@ export async function buildUserContext(user: UserRow, opts: { excludeConversatio
         )
       : Promise.resolve([]),
     progressSummary(user.id, tz),
+    // What they said most recently in other conversations, so a new chat can pick up where the last one left off.
+    memoryOn
+      ? query<{ content: string; created_at: string }>(
+          `SELECT m.content, m.created_at FROM messages m JOIN conversations c ON c.id = m.conversation_id
+           WHERE c.user_id = $1 AND c.id IS DISTINCT FROM $2 AND m.role = 'user'
+           ORDER BY m.created_at DESC LIMIT 4`,
+          [user.id, opts.excludeConversationId ?? null],
+        )
+      : Promise.resolve([]),
   ]);
 
   const focus = Array.isArray(profile.focus) ? profile.focus.filter((f): f is string => typeof f === "string") : [];
@@ -125,6 +134,10 @@ export async function buildUserContext(user: UserRow, opts: { excludeConversatio
     if (conversations.length) {
       lines.push("\nOther recent conversations with you:");
       for (const c of conversations) lines.push(`- ${localDate(c.updated_at, tz)}: ${field(c.title ?? "", 60)}`);
+    }
+    if (earlier.length) {
+      lines.push("\nWhat they said in those conversations (newest first; pick up on it naturally if it fits):");
+      for (const m of earlier) lines.push(`- ${localDate(m.created_at, tz)}: "${field(m.content, 140)}"`);
     }
   }
 
