@@ -1,4 +1,4 @@
-import { query, queryOne } from "../db.js";
+import { query, queryOne, withUserLock, type Db } from "../db.js";
 
 export const XP = {
   mood_checkin: 10,
@@ -39,26 +39,51 @@ export function levelFor(totalXp: number) {
   };
 }
 
+/**
+ * How many times a day each kind earns XP, so levels and streaks stay honest.
+ * Past the cap the action still works and is still counted; it just earns 0 XP.
+ */
+export const DAILY_XP_CAP = {
+  mood_checkin: 3,
+  breathing: 5,
+  grounding: 5,
+  journal: 3,
+  chat: 1,
+} as const;
+
+/** Past this many rows of one kind in a day, practice sessions are no longer recorded at all. */
+export const DAILY_ROW_CAP = 30;
+
 export async function recordActivity(
   userId: string,
   kind: string,
   xp: number,
   meta: Record<string, unknown> = {},
+  db?: Db,
 ): Promise<number> {
-  await query("INSERT INTO activities (user_id, kind, xp, meta) VALUES ($1, $2, $3, $4)", [userId, kind, xp, meta]);
+  await query("INSERT INTO activities (user_id, kind, xp, meta) VALUES ($1, $2, $3, $4)", [userId, kind, xp, meta], db);
   return xp;
+}
+
+/** Activities of one kind the person logged today (in their time zone). */
+export async function countToday(db: Db, userId: string, kind: string, timezone: string, extraWhere = "", extraParams: unknown[] = []) {
+  const row = await queryOne<{ n: number; earned: number }>(
+    `SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE xp > 0) AS earned FROM activities
+     WHERE user_id = $1 AND kind = $2
+       AND (created_at AT TIME ZONE $3)::date = (now() AT TIME ZONE $3)::date ${extraWhere}`,
+    [userId, kind, timezone, ...extraParams],
+    db,
+  );
+  return { n: row?.n ?? 0, earned: row?.earned ?? 0 };
 }
 
 /** Awards the once-a-day chat XP if it hasn't been awarded today (user's timezone). */
 export async function awardDailyChatXp(userId: string, timezone: string): Promise<number> {
-  const row = await queryOne<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM activities
-     WHERE user_id = $1 AND kind = 'chat'
-       AND (created_at AT TIME ZONE $2)::date = (now() AT TIME ZONE $2)::date`,
-    [userId, timezone],
-  );
-  if ((row?.n ?? 0) > 0) return 0;
-  return recordActivity(userId, "chat", XP.chat_daily);
+  return withUserLock(userId, async (db) => {
+    const today = await countToday(db, userId, "chat", timezone);
+    if (today.n > 0) return 0;
+    return recordActivity(userId, "chat", XP.chat_daily, {}, db);
+  });
 }
 
 export async function totalXp(userId: string): Promise<number> {
