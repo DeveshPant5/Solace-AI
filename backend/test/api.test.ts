@@ -309,3 +309,104 @@ describe("privacy", () => {
     assert.doesNotMatch(context, /\nSYSTEM:/);
   });
 });
+
+describe("daily tasks", () => {
+  const ids: Record<string, string> = {};
+
+  test("a task needs a time and, for your own, a name; practices get their name and no timer", async () => {
+    const { token } = B;
+    const box = await call("/tasks", { token, body: { activity: "breathe_box", hour: 15, minute: 0, minutes: 10 } });
+    assert.equal(box.status, 201, JSON.stringify(box.json));
+    assert.equal(box.json.task.title, "Box breathing");
+    assert.equal(box.json.task.days, 127);
+    assert.equal(box.json.task.minutes, null, "a timer only belongs to your own tasks");
+    assert.equal(box.json.task.remind, true);
+    ids.box = box.json.task.id;
+
+    assert.equal((await call("/tasks", { token, body: { activity: "own", hour: 7, minute: 30 } })).status, 400);
+    assert.equal((await call("/tasks", { token, body: { activity: "own", title: "Yoga", hour: 7, minute: 30, days: 0 } })).status, 400);
+    assert.equal((await call("/tasks", { token, body: { activity: "dance", title: "x", hour: 7, minute: 0 } })).status, 400);
+    assert.equal((await call("/tasks", { token, body: { activity: "own", title: "Yoga", hour: 24, minute: 0 } })).status, 400);
+
+    const yoga = await call("/tasks", { token, body: { activity: "own", title: " Yoga\n", hour: 7, minute: 30, minutes: 20, days: 62 } });
+    assert.equal(yoga.status, 201);
+    assert.equal(yoga.json.task.title, "Yoga");
+    assert.equal(yoga.json.task.minutes, 20);
+    ids.yoga = yoga.json.task.id;
+  });
+
+  test("the list says what's due today and what's done", async () => {
+    const r = await call("/tasks", { token: B.token });
+    assert.equal(r.status, 200);
+    assert.match(r.json.today.day, /^\d{4}-\d{2}-\d{2}$/);
+    const [yoga, box] = r.json.tasks; // ordered by time: 7:30, then 15:00
+    assert.equal(yoga.id, ids.yoga);
+    assert.equal(box.id, ids.box);
+    assert.equal(box.dueToday, true);
+    assert.equal(yoga.dueToday, ((62 >> r.json.today.weekday) & 1) === 1, "weekdays only");
+    assert.equal(box.doneToday, false);
+  });
+
+  test("doing the practice in the app ticks its task by itself", async () => {
+    const { token } = B;
+    await call("/activities", { token, body: { kind: "breathing", meta: { pattern: "calm", seconds: 60 } } });
+    let box = (await call("/tasks", { token })).json.tasks.find((t: Json) => t.id === ids.box);
+    assert.equal(box.doneToday, false, "a different breathing pattern doesn't count");
+    await call("/activities", { token, body: { kind: "breathing", meta: { pattern: "box", seconds: 60 } } });
+    box = (await call("/tasks", { token })).json.tasks.find((t: Json) => t.id === ids.box);
+    assert.equal(box.doneToday, true);
+    assert.equal(box.doneVia, "practice");
+  });
+
+  test("ticking your own task earns XP once, and unticking takes it back", async () => {
+    const { token } = B;
+    const count = async () =>
+      (await queryOne<{ n: number }>("SELECT COUNT(*)::int AS n FROM activities WHERE kind = 'task' AND meta->>'task' = $1", [ids.yoga]))!.n;
+    const first = await call(`/tasks/${ids.yoga}/done`, { token, body: {} });
+    assert.equal(first.status, 200);
+    assert.equal(first.json.xp, 10);
+    assert.equal((await call(`/tasks/${ids.yoga}/done`, { token, body: { done: true } })).json.xp, 0);
+    assert.equal(await count(), 1);
+    let yoga = (await call("/tasks", { token })).json.tasks.find((t: Json) => t.id === ids.yoga);
+    assert.equal(yoga.doneVia, "tick");
+
+    assert.equal((await call(`/tasks/${ids.yoga}/done`, { token, body: { done: false } })).json.done, false);
+    assert.equal(await count(), 0);
+    yoga = (await call("/tasks", { token })).json.tasks.find((t: Json) => t.id === ids.yoga);
+    assert.equal(yoga.doneToday, false);
+  });
+
+  test("editing keeps what isn't changed, and a default name follows the practice", async () => {
+    const { token } = B;
+    const r = await call(`/tasks/${ids.box}`, { method: "PATCH", token, body: { activity: "breathe_calm", hour: 16 } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    assert.equal(r.json.task.title, "Calm breathing");
+    assert.equal(r.json.task.hour, 16);
+    assert.equal(r.json.task.minute, 0);
+    assert.equal(r.json.task.days, 127);
+    const renamed = await call(`/tasks/${ids.yoga}`, { method: "PATCH", token, body: { title: "Morning yoga", remind: false } });
+    assert.equal(renamed.json.task.title, "Morning yoga");
+    assert.equal(renamed.json.task.minutes, 20);
+    assert.equal(renamed.json.task.remind, false);
+  });
+
+  test("someone else's tasks can't be seen, changed, ticked or deleted", async () => {
+    const { token } = A;
+    const mine = (await call("/tasks", { token })).json.tasks as Json[];
+    assert.equal(mine.some((t) => t.id === ids.yoga), false);
+    assert.equal((await call(`/tasks/${ids.yoga}`, { method: "PATCH", token, body: { title: "Mine now" } })).status, 404);
+    assert.equal((await call(`/tasks/${ids.yoga}/done`, { token, body: {} })).status, 404);
+    assert.equal((await call(`/tasks/${ids.yoga}`, { method: "DELETE", token })).status, 404);
+    assert.equal((await call("/tasks/not-a-uuid", { method: "DELETE", token })).status, 404);
+    assert.equal((await call(`/tasks/${ids.yoga}`, { method: "DELETE", token: B.token })).status, 204);
+  });
+
+  test("the task cap holds under parallel requests", async () => {
+    const { token } = A;
+    const results = await Promise.all(
+      Array.from({ length: 24 }, (_, i) => call("/tasks", { token, body: { activity: "own", title: `T${i}`, hour: 9, minute: 0 } })),
+    );
+    assert.equal(results.filter((r) => r.status === 201).length, 20);
+    assert.equal((await call("/tasks", { token })).json.tasks.length, 20);
+  });
+});

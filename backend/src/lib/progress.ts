@@ -9,6 +9,7 @@ export const XP = {
   guide_step: 5,
   journal: 15,
   chat_daily: 10,
+  task: 10,
 } as const;
 
 // A garden that grows as you show up for yourself.
@@ -49,6 +50,7 @@ export const DAILY_XP_CAP = {
   grounding: 5,
   journal: 3,
   chat: 1,
+  task: 5,
 } as const;
 
 /** Past this many rows of one kind in a day, practice sessions are no longer recorded at all. */

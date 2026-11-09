@@ -15,6 +15,7 @@ import { activitiesRouter, journalRouter, memoriesRouter, remindersRouter } from
 import { moodsRouter } from "./routes/moods.js";
 import { onboardingRouter } from "./routes/onboarding.js";
 import { progressRouter } from "./routes/progress.js";
+import { tasksRouter } from "./routes/tasks.js";
 import { voiceAvailable, voiceRouter } from "./routes/voice.js";
 
 export function createApp() {
@@ -69,6 +70,7 @@ export function createApp() {
   app.use("/journal", signedIn, journalRouter);
   app.use("/memories", signedIn, memoriesRouter);
   app.use("/reminders", signedIn, remindersRouter);
+  app.use("/tasks", signedIn, tasksRouter);
 
   app.use(notFound);
   app.use(errorHandler);
