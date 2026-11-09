@@ -182,7 +182,7 @@ export default function Personalize() {
               onSubmitEditing={() => canContinue && void next()}
               maxLength={60}
             />
-            <MicButton size={52} onText={(t) => setName(nameFromSpeech(t))} />
+            <MicButton size={52} mode="short" onText={(t) => setName(nameFromSpeech(t))} />
           </Row>
         )}
 
