@@ -7,15 +7,16 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node --env-file-if-exists=.env dist/index.js",
+    "start": "NODE_ENV=production node --env-file-if-exists=.env dist/index.js",
     "migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "db:up": "podman start solace-db 2>/dev/null || podman run -d --name solace-db --restart unless-stopped -e POSTGRES_USER=solace -e POSTGRES_PASSWORD=solace -e POSTGRES_DB=solace -p 5433:5432 -v solace-db-data:/var/lib/postgresql/data docker.io/library/postgres:16-alpine",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "db:up": "podman start solace-db 2>/dev/null || podman run -d --name solace-db --restart unless-stopped -e POSTGRES_USER=solace -e POSTGRES_PASSWORD=solace -e POSTGRES_DB=solace -p 127.0.0.1:5433:5432 -v solace-db-data:/var/lib/postgresql/data docker.io/library/postgres:16-alpine",
     "db:down": "podman stop solace-db",
-    "seed:demo": "tsx --env-file-if-exists=.env src/seed-demo.ts"
+    "seed:demo": "tsx --env-file-if-exists=.env src/seed-demo.ts",
+    "test": "node --env-file-if-exists=.env --import tsx --test test/*.test.ts"
   },
   "engines": {
-    "node": ">=20.6"
+    "node": ">=22.9"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0",
