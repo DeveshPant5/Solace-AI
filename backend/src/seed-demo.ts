@@ -1,13 +1,34 @@
-// Fills a local demo account with two weeks of history so the Journey screen,
+// Fills a demo account with two weeks of history so the Journey screen,
 // mood chart and achievements look lived-in for a demo recording.
-//   npm run seed:demo            (account: demo@solace.test / solace-demo-2026)
+//   npm run seed:demo
+//
+// On a local database the account is demo@solace.test with the local password
+// below. Any other database (a deployed one) needs ALLOW_DEMO_SEED=1 and its own
+// SEED_DEMO_PASSWORD, because the local password is public in this repository.
 import bcrypt from "bcryptjs";
+import { config } from "./config.js";
 import { pool, query, queryOne } from "./db.js";
 import { migrate } from "./migrate.js";
 import { XP } from "./lib/progress.js";
 
 const EMAIL = "demo@solace.test";
-const PASSWORD = "solace-demo-2026";
+const LOCAL_PASSWORD = "solace-demo-2026";
+
+function demoPassword(): string {
+  const host = new URL(config.databaseUrl).hostname;
+  const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(host);
+  if (local && !config.isProduction) return process.env.SEED_DEMO_PASSWORD?.trim() || LOCAL_PASSWORD;
+  if (process.env.ALLOW_DEMO_SEED !== "1") {
+    throw new Error(`Refusing to seed the demo account on ${host}: this isn't a local database. Set ALLOW_DEMO_SEED=1 and SEED_DEMO_PASSWORD to do it on purpose.`);
+  }
+  const password = process.env.SEED_DEMO_PASSWORD?.trim() ?? "";
+  if (password.length < 12 || password === LOCAL_PASSWORD) {
+    throw new Error("Set SEED_DEMO_PASSWORD to a private password of at least 12 characters for a deployed database.");
+  }
+  return password;
+}
+
+const PASSWORD = demoPassword();
 
 const DAYS: { daysAgo: number; mood: number; emotions: string[]; note?: string; extra?: string[] }[] = [
   { daysAgo: 13, mood: 2, emotions: ["anxious", "tired"], note: "Exams in two weeks and I haven't started properly", extra: ["breathing"] },
@@ -43,6 +64,7 @@ async function main() {
     );
   }
   const id = user!.id;
+  await query("UPDATE users SET password_hash = $2 WHERE id = $1", [id, await bcrypt.hash(PASSWORD, 10)]);
   // Start from a clean slate for the seeded kinds of data.
   await query("DELETE FROM mood_entries WHERE user_id = $1", [id]);
   await query("DELETE FROM activities WHERE user_id = $1", [id]);
@@ -52,26 +74,29 @@ async function main() {
   await query("DELETE FROM memories WHERE user_id = $1", [id]);
 
   for (const d of DAYS) {
-    const at = `now() - interval '${d.daysAgo} days' - interval '${Math.floor(Math.random() * 5)} hours'`;
-    await query(`INSERT INTO mood_entries (user_id, mood, emotions, note, created_at) VALUES ($1, $2, $3, $4, ${at})`, [
+    const at = new Date(Date.now() - d.daysAgo * 86_400_000 - Math.floor(Math.random() * 5) * 3_600_000).toISOString();
+    await query("INSERT INTO mood_entries (user_id, mood, emotions, note, created_at) VALUES ($1, $2, $3, $4, $5)", [
       id,
       d.mood,
       d.emotions,
       d.note ?? null,
+      at,
     ]);
-    await query(`INSERT INTO activities (user_id, kind, xp, created_at) VALUES ($1, 'mood_checkin', $2, ${at})`, [id, XP.mood_checkin]);
+    await query("INSERT INTO activities (user_id, kind, xp, created_at) VALUES ($1, 'mood_checkin', $2, $3)", [id, XP.mood_checkin, at]);
     for (const kind of d.extra ?? []) {
       if (kind === "journal") {
-        await query(`INSERT INTO journal_entries (user_id, prompt, content, created_at) VALUES ($1, $2, $3, ${at})`, [
+        await query("INSERT INTO journal_entries (user_id, prompt, content, created_at) VALUES ($1, $2, $3, $4)", [
           id,
           "What went better today than you expected?",
           "I got through two chapters and actually understood them. Taking breaks helped more than pushing through.",
+          at,
         ]);
       }
-      await query(`INSERT INTO activities (user_id, kind, xp, created_at) VALUES ($1, $2, $3, ${at})`, [
+      await query("INSERT INTO activities (user_id, kind, xp, created_at) VALUES ($1, $2, $3, $4)", [
         id,
         kind,
         kind === "journal" ? XP.journal : XP.breathing,
+        at,
       ]);
     }
   }
