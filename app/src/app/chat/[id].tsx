@@ -359,9 +359,6 @@ export default function Chat() {
           />
           <IconButton icon="arrow-up" label="Send" tone="primary" size={42} onPress={() => send(input)} />
         </Row>
-        <T variant="small" color={c.inkFaint} center style={{ fontSize: 11, marginTop: 6 }}>
-          Sol is an AI companion, not a therapist. In an emergency, call your local emergency number.
-        </T>
       </View>
     </KeyboardAvoidingView>
   );
