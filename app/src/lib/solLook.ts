@@ -7,15 +7,13 @@ import { storage } from './storage';
  * You tab for five seconds). Kept on this phone, per account. "auto" eyes and
  * mouth follow Luma's mood, which is how Luma looks out of the box.
  */
-export const FRUITS = [
+export const FLOWERS = [
   { id: 'classic', label: 'Luma' },
-  { id: 'apple', label: 'Apple' },
-  { id: 'orange', label: 'Orange' },
-  { id: 'pear', label: 'Pear' },
-  { id: 'strawberry', label: 'Strawberry' },
-  { id: 'lemon', label: 'Lemon' },
-  { id: 'blueberry', label: 'Blueberry' },
-  { id: 'peach', label: 'Peach' },
+  { id: 'daisy', label: 'Daisy' },
+  { id: 'sunflower', label: 'Sunflower' },
+  { id: 'tulip', label: 'Tulip' },
+  { id: 'blossom', label: 'Blossom' },
+  { id: 'forgetmenot', label: 'Forget-me-not' },
 ] as const;
 
 export const EYES = [
@@ -57,21 +55,21 @@ export const GLASSES = [
   { id: 'sun', label: 'Sunnies' },
 ] as const;
 
-export type FruitId = (typeof FRUITS)[number]['id'];
+export type FlowerId = (typeof FLOWERS)[number]['id'];
 export type EyeChoice = (typeof EYES)[number]['id'];
 export type MouthChoice = (typeof MOUTHS)[number]['id'];
 export type CheekChoice = (typeof CHEEKS)[number]['id'];
 export type GlassesChoice = (typeof GLASSES)[number]['id'];
 
 export interface SolLook {
-  fruit: FruitId;
+  flower: FlowerId;
   eyes: EyeChoice;
   mouth: MouthChoice;
   cheeks: CheekChoice;
   glasses: GlassesChoice;
 }
 
-export const CLASSIC_LOOK: SolLook = { fruit: 'classic', eyes: 'auto', mouth: 'auto', cheeks: 'rosy', glasses: 'none' };
+export const CLASSIC_LOOK: SolLook = { flower: 'classic', eyes: 'auto', mouth: 'auto', cheeks: 'rosy', glasses: 'none' };
 
 const pick = <T extends { id: string }>(options: readonly T[], value: unknown, fallback: T['id']): T['id'] =>
   options.some((o) => o.id === value) ? (value as T['id']) : fallback;
@@ -80,7 +78,7 @@ const pick = <T extends { id: string }>(options: readonly T[], value: unknown, f
 function sanitize(raw: unknown): SolLook {
   const v = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   return {
-    fruit: pick(FRUITS, v.fruit, 'classic'),
+    flower: pick(FLOWERS, v.flower, 'classic'),
     eyes: pick(EYES, v.eyes, 'auto'),
     mouth: pick(MOUTHS, v.mouth, 'auto'),
     cheeks: pick(CHEEKS, v.cheeks, 'rosy'),
@@ -128,5 +126,5 @@ export const isClassic = (look: SolLook) =>
 
 export function randomLook(): SolLook {
   const any = <T extends { id: string }>(options: readonly T[]) => options[Math.floor(Math.random() * options.length)]!.id;
-  return { fruit: any(FRUITS), eyes: any(EYES), mouth: any(MOUTHS), cheeks: any(CHEEKS), glasses: any(GLASSES) } as SolLook;
+  return { flower: any(FLOWERS), eyes: any(EYES), mouth: any(MOUTHS), cheeks: any(CHEEKS), glasses: any(GLASSES) } as SolLook;
 }

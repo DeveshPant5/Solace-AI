@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg';
 
-import { useSolLook, type CheekChoice, type FruitId, type GlassesChoice, type SolLook } from '@/lib/solLook';
+import { useSolLook, type CheekChoice, type FlowerId, type GlassesChoice, type SolLook } from '@/lib/solLook';
 
 export type SolMood = 'happy' | 'calm' | 'listening' | 'concerned' | 'joyful' | 'sleepy' | 'thinking';
 
@@ -254,132 +254,114 @@ function Glasses({ style }: { style: GlassesChoice }) {
   );
 }
 
-/** The fruits Luma can be: colours (light to deep), the body's outline, and what grows on top. */
-const FRUIT: Record<Exclude<FruitId, 'classic'>, { colors: [string, string, string]; body: string; top: (leaf: string) => ReactNode; marks?: ReactNode }> = {
-  apple: {
-    colors: ['#FF9A8B', '#F2615F', '#D9474F'],
-    body: 'M100 60 C110 48 132 42 152 54 C174 68 178 102 170 130 C162 160 140 180 116 178 C109 177 105 174 100 174 C95 174 91 177 84 178 C60 180 38 160 30 130 C22 102 26 68 48 54 C68 42 90 48 100 60 Z',
-    top: (leaf) => (
+// ---------- Luma's flowers ----------
+// Every flower is drawn around the same middle, where the face sits: petals go
+// behind, then the centre (or, for the tulip, the cup) the face is drawn on.
+
+const CX = 100;
+const CY = 112;
+const angles = (n: number, offset = 0) => Array.from({ length: n }, (_, i) => offset + (360 / n) * i);
+const turn = (a: number) => `rotate(${a} ${CX} ${CY})`;
+const pointed = (inner: number, outer: number, w: number) => {
+  const mid = CY - (inner + outer) / 2;
+  return `M${CX} ${CY - inner}Q${CX + w} ${mid} ${CX} ${CY - outer}Q${CX - w} ${mid} ${CX} ${CY - inner}Z`;
+};
+const notched = (inner: number, outer: number, w: number) =>
+  `M${CX} ${CY - inner}C${CX + w} ${CY - inner - 14} ${CX + w * 0.95} ${CY - outer + 6} ${CX + 7} ${CY - outer}L${CX} ${CY - outer + 8}L${CX - 7} ${CY - outer}C${CX - w * 0.95} ${CY - outer + 6} ${CX - w} ${CY - inner - 14} ${CX} ${CY - inner}Z`;
+const TULIP_CUP =
+  'M40 80 C38 62 48 52 60 58 C68 42 84 36 100 48 C116 36 132 42 140 58 C152 52 162 62 160 80 C158 130 138 172 100 174 C62 172 42 130 40 80 Z';
+
+type Flower = {
+  /** Petal colours, light to deep; null uses Luma's own colours, which follow the mood. */
+  petals: [string, string, string] | null;
+  /** The centre the face sits on (light, deep) and its size; null when the face sits on the petals. */
+  disc: { colors: [string, string]; r: number } | null;
+  draw: (fill: string) => ReactNode;
+};
+
+const FLOWER: Record<FlowerId, Flower> = {
+  classic: {
+    petals: null,
+    disc: { colors: ['#FFF7E0', '#FFE6AD'], r: 54 },
+    draw: (fill) => (
       <G>
-        <Path d="M100 60 Q97 46 103 33" stroke="#8A5A3B" strokeWidth={5} strokeLinecap="round" fill="none" />
-        <Path d="M103 42 C112 30 130 29 137 37 C128 47 112 48 103 42 Z" fill={leaf} />
-      </G>
-    ),
-  },
-  orange: {
-    colors: ['#FFD27A', '#FFAA45', '#F28C2A'],
-    body: 'M100 46 C141 46 171 76 171 114 C171 152 141 181 100 181 C59 181 29 152 29 114 C29 76 59 46 100 46 Z',
-    top: (leaf) => (
-      <G>
-        <Circle cx={100} cy={48} r={3.2} fill="#8BBF5A" />
-        <Path d="M101 47 C107 36 121 34 128 40 C121 49 108 51 101 47 Z" fill={leaf} />
-      </G>
-    ),
-    marks: (
-      <G>
-        {[
-          [52, 84],
-          [148, 84],
-          [42, 116],
-          [158, 116],
-          [58, 154],
-          [142, 154],
-          [100, 170],
-          [80, 62],
-          [120, 64],
-        ].map(([x, y]) => (
-          <Circle key={`${x}-${y}`} cx={x} cy={y} r={1.8} fill="#D9760F" opacity={0.25} />
+        {angles(8).map((a) => (
+          <Ellipse key={a} cx={CX} cy={CY - 57} rx={23} ry={28} fill={fill} transform={turn(a)} />
+        ))}
+        {angles(8, 22.5).map((a) => (
+          <Ellipse key={`i${a}`} cx={CX} cy={CY - 50} rx={17} ry={21} fill="#FFFFFF" opacity={0.3} transform={turn(a)} />
         ))}
       </G>
     ),
   },
-  pear: {
-    colors: ['#E6F09E', '#C9DE6E', '#A9C852'],
-    body: 'M100 40 C117 40 126 54 128 68 C130 84 148 96 160 116 C176 144 160 182 100 182 C40 182 24 144 40 116 C52 96 70 84 72 68 C74 54 83 40 100 40 Z',
-    top: (leaf) => (
+  daisy: {
+    petals: ['#FFFFFF', '#FBF8FF', '#ECE4F6'],
+    disc: { colors: ['#FFE98A', '#FFC23D'], r: 50 },
+    draw: (fill) => (
       <G>
-        <Path d="M100 41 Q98 30 104 21" stroke="#8A5A3B" strokeWidth={4.5} strokeLinecap="round" fill="none" />
-        <Path d="M103 29 C112 18 128 18 134 25 C126 34 111 35 103 29 Z" fill={leaf} />
-      </G>
-    ),
-  },
-  strawberry: {
-    colors: ['#FF9DAA', '#F2566E', '#D63B57'],
-    body: 'M100 54 C132 46 170 60 170 94 C170 130 136 168 100 184 C64 168 30 130 30 94 C30 60 68 46 100 54 Z',
-    top: (leaf) => (
-      <G>
-        <Ellipse cx={82} cy={55} rx={17} ry={7} fill={leaf} transform="rotate(-20 82 55)" />
-        <Ellipse cx={118} cy={55} rx={17} ry={7} fill={leaf} transform="rotate(20 118 55)" />
-        <Ellipse cx={100} cy={49} rx={8} ry={13} fill={leaf} />
-        <Path d="M100 42 Q99 33 103 25" stroke="#6FBF8C" strokeWidth={4} strokeLinecap="round" fill="none" />
-      </G>
-    ),
-    marks: (
-      <G>
-        {[
-          [56, 84],
-          [144, 84],
-          [44, 104],
-          [156, 104],
-          [100, 168],
-          [84, 158],
-          [116, 158],
-          [70, 148],
-          [130, 148],
-          [74, 70],
-          [126, 70],
-        ].map(([x, y]) => (
-          <Ellipse key={`${x}-${y}`} cx={x} cy={y} rx={2} ry={3} fill="#FFE7A0" opacity={0.9} />
+        {angles(14).map((a) => (
+          <Ellipse key={a} cx={CX} cy={CY - 62} rx={9.5} ry={25} fill={fill} stroke="#DCD0EA" strokeWidth={1.4} transform={turn(a)} />
         ))}
       </G>
     ),
   },
-  lemon: {
-    colors: ['#FFF4A6', '#FFE45E', '#F2C932'],
-    body: 'M26 112 C26 84 54 54 100 52 C146 54 174 84 174 112 C174 142 146 172 100 174 C54 172 26 142 26 112 Z',
-    top: (leaf) => (
+  sunflower: {
+    petals: ['#FFE47A', '#FFC93A', '#F5A814'],
+    disc: { colors: ['#F6D094', '#E2A65C'], r: 52 },
+    draw: (fill) => (
       <G>
-        <Path d="M100 53 Q99 45 102 40" stroke="#8BBF5A" strokeWidth={4} strokeLinecap="round" fill="none" />
-        <Path d="M101 46 C109 36 123 35 129 41 C122 50 109 51 101 46 Z" fill={leaf} />
-      </G>
-    ),
-    marks: (
-      <G>
-        <Path d="M29 103 C21 105 17 109 17 112 C17 115 21 119 29 121 Z" fill="#F2C932" />
-        <Path d="M171 103 C179 105 183 109 183 112 C183 115 179 119 171 121 Z" fill="#F2C932" />
+        {angles(16, 11.25).map((a) => (
+          <Path key={`b${a}`} d={pointed(44, 78, 13)} fill="#EE9F12" transform={turn(a)} />
+        ))}
+        {angles(16).map((a) => (
+          <Path key={a} d={pointed(44, 87, 15)} fill={fill} transform={turn(a)} />
+        ))}
       </G>
     ),
   },
-  blueberry: {
-    colors: ['#B4C3FF', '#8392F0', '#6169D2'],
-    body: 'M100 46 C141 46 171 76 171 114 C171 152 141 181 100 181 C59 181 29 152 29 114 C29 76 59 46 100 46 Z',
-    top: () => (
-      <Path
-        d="M100 40 L103.5 47 L111 47.5 L105 52.5 L107 60 L100 56 L93 60 L95 52.5 L89 47.5 L96.5 47 Z"
-        fill="#3E3F8F"
-        opacity={0.75}
-        strokeLinejoin="round"
-      />
-    ),
-  },
-  peach: {
-    colors: ['#FFD9B8', '#FFB092', '#F28E8A'],
-    body: 'M100 50 C141 46 172 74 172 114 C172 153 141 180 100 180 C59 180 28 153 28 114 C28 74 59 46 100 50 Z',
-    top: (leaf) => (
+  tulip: {
+    petals: ['#FFC6CC', '#F98A9B', '#E85A74'],
+    disc: null,
+    draw: (fill) => (
       <G>
-        <Path d="M100 51 Q99 41 103 33" stroke="#8A5A3B" strokeWidth={4.5} strokeLinecap="round" fill="none" />
-        <Path d="M102 40 C94 28 78 27 71 34 C79 44 94 46 102 40 Z" fill={leaf} />
+        <Path d="M46 86 C30 72 30 52 42 44 C54 58 62 74 66 94 Z" fill={fill} opacity={0.75} />
+        <Path d="M154 86 C170 72 170 52 158 44 C146 58 138 74 134 94 Z" fill={fill} opacity={0.75} />
+        <Path d={TULIP_CUP} fill={fill} />
+        <Path d="M100 52 C91 62 88 74 90 86" stroke="#FFFFFF" strokeOpacity={0.4} strokeWidth={4} strokeLinecap="round" fill="none" />
       </G>
     ),
-    marks: <Path d="M100 52 C94 62 93 74 96 86" stroke="#E07A70" strokeWidth={3} strokeLinecap="round" fill="none" opacity={0.35} />,
+  },
+  blossom: {
+    petals: ['#FFE4EC', '#FFC1D3', '#F39BB6'],
+    disc: { colors: ['#FFFFFF', '#FFE8F0'], r: 50 },
+    draw: (fill) => (
+      <G>
+        {angles(5).map((a) => (
+          <Path key={a} d={notched(30, 88, 36)} fill={fill} transform={turn(a)} />
+        ))}
+      </G>
+    ),
+  },
+  forgetmenot: {
+    petals: ['#D2E4FF', '#A0BFF6', '#7897E4'],
+    disc: { colors: ['#FFF6C8', '#FFDE76'], r: 49 },
+    draw: (fill) => (
+      <G>
+        {angles(5).map((a) => (
+          <Ellipse key={a} cx={CX} cy={CY - 56} rx={31} ry={30} fill={fill} transform={turn(a)} />
+        ))}
+      </G>
+    ),
   },
 };
 
-const CLASSIC_BODY = 'M100 44 C141 44 172 73 172 113 C172 153 141 180 100 180 C59 180 28 153 28 113 C28 73 59 44 100 44 Z';
+/** Luma's arms and feet are green, like a stem and leaves. */
+const ARM = '#8FCB9C';
+const FOOT = '#6DB283';
 
 /**
- * Luma's little arms and feet, in the same soft colours as its body. Drawn before
- * the body, so the body covers where they join. When Luma is joyful, one hand waves.
+ * Luma's little arms and feet. Drawn before the flower, so the petals cover where
+ * they join. When Luma is joyful, one hand waves.
  */
 function Limbs({ mood, arm, foot }: { mood: SolMood; arm: string; foot: string }) {
   const limb = { stroke: arm, strokeWidth: 10, strokeLinecap: 'round' as const, fill: 'none' };
@@ -441,8 +423,8 @@ export function Sol({
   const l = look ?? stored;
   const withLimbs = limbs ?? size >= 80;
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const fruit = l.fruit === 'classic' ? null : FRUIT[l.fruit];
-  const [c1, c2, c3] = fruit?.colors ?? TINTS[tint] ?? TINTS[0]!;
+  const flower = FLOWER[l.flower] ?? FLOWER.classic;
+  const [c1, c2, c3] = flower.petals ?? TINTS[tint] ?? TINTS[0]!;
   const eyes: EyeStyle = moodFace || l.eyes === 'auto' ? moodEyes(mood) : l.eyes;
   const mouth: MouthStyle = moodFace || l.mouth === 'auto' ? MOOD_MOUTH[mood] : l.mouth;
   const [blink, setBlink] = useState(false);
@@ -496,39 +478,29 @@ export function Sol({
               <Stop offset="0%" stopColor={c2} stopOpacity={0.55} />
               <Stop offset="100%" stopColor={c2} stopOpacity={0} />
             </RadialGradient>
-            <LinearGradient id={`body${id}`} x1="0.15" y1="0.05" x2="0.85" y2="1">
+            <LinearGradient id={`petal${id}`} x1={30} y1={24} x2={170} y2={200} gradientUnits="userSpaceOnUse">
               <Stop offset="0%" stopColor={c1} />
               <Stop offset="55%" stopColor={c2} />
               <Stop offset="100%" stopColor={c3} />
             </LinearGradient>
-            <LinearGradient id={`leaf${id}`} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%" stopColor="#A9E3B8" />
-              <Stop offset="100%" stopColor="#6FBF8C" />
-            </LinearGradient>
+            {flower.disc && (
+              <LinearGradient id={`disc${id}`} x1="0.2" y1="0.1" x2="0.8" y2="1">
+                <Stop offset="0%" stopColor={flower.disc.colors[0]} />
+                <Stop offset="100%" stopColor={flower.disc.colors[1]} />
+              </LinearGradient>
+            )}
           </Defs>
           <Circle cx={100} cy={112} r={98} fill={`url(#glow${id})`} />
-          {withLimbs && <Limbs mood={mood} arm={c2} foot={c3} />}
-          {/* With limbs, the body is drawn a little smaller and higher to leave room for the feet. */}
-          <G transform={withLimbs ? 'translate(14 2) scale(0.86)' : undefined}>
-          {fruit ? (
-            fruit.top(`url(#leaf${id})`)
-          ) : (
-            <G>
-              {/* Sprout */}
-              <Path d="M100 48 Q99 36 101 26" stroke="#6FBF8C" strokeWidth={4} strokeLinecap="round" fill="none" />
-              <Path d="M100 33 C90 20 75 20 69 28 C78 38 92 39 100 33 Z" fill={`url(#leaf${id})`} />
-              <Path d="M101 28 C110 13 127 12 134 20 C125 31 110 34 101 28 Z" fill={`url(#leaf${id})`} />
-            </G>
-          )}
-          {/* Body */}
-          <Path d={fruit?.body ?? CLASSIC_BODY} fill={`url(#body${id})`} />
-          {fruit?.marks}
-          <Ellipse cx={72} cy={74} rx={20} ry={10} fill="#FFFFFF" opacity={0.42} transform="rotate(-28 72 74)" />
-          <Ellipse cx={140} cy={150} rx={14} ry={7} fill="#FFFFFF" opacity={0.18} transform="rotate(-30 140 150)" />
-          <Cheeks style={l.cheeks} />
-          <Eyes style={eyes} blink={blink} />
-          <Mouth style={mouth} />
-          <Glasses style={l.glasses} />
+          {withLimbs && <Limbs mood={mood} arm={ARM} foot={FOOT} />}
+          {/* With limbs, the flower is drawn a little smaller and higher to leave room for the feet. */}
+          <G transform={withLimbs ? 'translate(20 2) scale(0.8)' : undefined}>
+            {flower.draw(`url(#petal${id})`)}
+            {flower.disc && <Circle cx={CX} cy={CY} r={flower.disc.r} fill={`url(#disc${id})`} />}
+            <Ellipse cx={80} cy={84} rx={13} ry={6.5} fill="#FFFFFF" opacity={0.5} transform="rotate(-28 80 84)" />
+            <Cheeks style={l.cheeks} />
+            <Eyes style={eyes} blink={blink} />
+            <Mouth style={mouth} />
+            <Glasses style={l.glasses} />
           </G>
         </Svg>
       </Animated.View>

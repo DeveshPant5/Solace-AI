@@ -10,7 +10,7 @@ import {
   CHEEKS,
   CLASSIC_LOOK,
   EYES,
-  FRUITS,
+  FLOWERS,
   GLASSES,
   isClassic,
   MOUTHS,
@@ -137,7 +137,7 @@ export default function SolStudio() {
         </LinearGradient>
       </Animated.View>
 
-      <Shelf title="Fruit" part="fruit" options={FRUITS} look={look} mood={mood} />
+      <Shelf title="Flower" part="flower" options={FLOWERS} look={look} mood={mood} />
       <Shelf title="Eyes" part="eyes" zoom options={EYES} look={look} mood={mood} />
       <Shelf title="Mouth" part="mouth" zoom options={MOUTHS} look={look} mood={mood} />
       <Shelf title="Cheeks" part="cheeks" zoom options={CHEEKS} look={look} mood={mood} />
