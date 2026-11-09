@@ -1,7 +1,7 @@
-import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
+import { HandIcon } from '@/components/HandIcon';
 import { Sol, type SolMood } from '@/components/Sol';
 import { Button, Card, Chip, ErrorNote, Header, inputStyle, Row, Screen, SectionTitle, T, Tappable, type IconName } from '@/components/ui';
 import { FOCUS_AREAS } from '@/content/wellness';
@@ -83,7 +83,7 @@ export default function Settings() {
                 borderColor: active ? c.primary : c.line,
               }}
             >
-              <Feather name={a.icon} size={20} color={active ? c.primary : c.inkSoft} />
+              <HandIcon name={a.icon} size={24} color={active ? c.primary : c.inkSoft} />
               <T variant="small" color={active ? c.ink : c.inkSoft}>
                 {a.label}
               </T>

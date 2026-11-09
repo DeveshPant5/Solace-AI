@@ -18,6 +18,7 @@ import {
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { HandIcon, HandIconTile, hasHandIcon } from '@/components/HandIcon';
 import { haptic } from '@/lib/haptics';
 import { radius, shadow, space, type, useTheme, type Palette } from '@/theme';
 
@@ -291,7 +292,7 @@ export function Chip({
         borderColor: selected ? active : c.line,
       }}
     >
-      {icon && <Feather name={icon} size={15} color={selected ? c.primaryInk : c.inkSoft} />}
+      {icon && <HandIcon name={icon} size={17} color={selected ? c.primaryInk : c.inkSoft} wash={!selected} />}
       <T variant="small" color={selected ? c.primaryInk : c.ink}>
         {label}
       </T>
@@ -347,7 +348,9 @@ export function SectionTitle({ title, action, onAction }: { title: string; actio
   );
 }
 
+/** An icon on a soft patch of colour: hand-drawn where Solace has its own drawing, Feather otherwise. */
 export function IconBadge({ icon, bg, fg, size = 40 }: { icon: IconName; bg: string; fg: string; size?: number }) {
+  if (hasHandIcon(icon)) return <HandIconTile name={icon} size={size} bg={bg} fg={fg} />;
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2.6, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
       <Feather name={icon} size={size * 0.48} color={fg} />

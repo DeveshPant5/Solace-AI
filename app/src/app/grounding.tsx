@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -6,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInRight, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { HandIcon } from '@/components/HandIcon';
 import { PipTip } from '@/components/PipTip';
 import { Sol } from '@/components/Sol';
 import { Button, Header, Pill, ProgressBar, Row, T, Tappable } from '@/components/ui';
@@ -66,7 +66,7 @@ export default function Grounding() {
         ) : (
           <Animated.View key={step} entering={FadeInRight.duration(400)} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.lg }}>
             <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: c.sageSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={current.icon} size={54} color={c.sage} />
+              <HandIcon name={current.icon} size={58} color={c.sage} />
             </View>
             <T variant="hero" center>
               {current.count}

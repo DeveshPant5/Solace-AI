@@ -44,11 +44,11 @@ export const BREATH_PATTERNS: Record<string, BreathPattern> = {
 };
 
 export const GROUNDING_STEPS = [
-  { count: 5, sense: 'see', prompt: 'Look around. Name 5 things you can see.', icon: 'eye-outline' as const },
-  { count: 4, sense: 'touch', prompt: 'Notice 4 things you can feel or touch.', icon: 'hand-left-outline' as const },
-  { count: 3, sense: 'hear', prompt: 'Listen for 3 sounds, near or far.', icon: 'ear-outline' as const },
-  { count: 2, sense: 'smell', prompt: 'Find 2 things you can smell.', icon: 'flower-outline' as const },
-  { count: 1, sense: 'taste', prompt: 'Notice 1 thing you can taste.', icon: 'cafe-outline' as const },
+  { count: 5, sense: 'see', prompt: 'Look around. Name 5 things you can see.', icon: 'eye' },
+  { count: 4, sense: 'touch', prompt: 'Notice 4 things you can feel or touch.', icon: 'hand' },
+  { count: 3, sense: 'hear', prompt: 'Listen for 3 sounds, near or far.', icon: 'ear' },
+  { count: 2, sense: 'smell', prompt: 'Find 2 things you can smell.', icon: 'flower' },
+  { count: 1, sense: 'taste', prompt: 'Notice 1 thing you can taste.', icon: 'coffee' },
 ];
 
 export const EMOTIONS = {
